@@ -34,7 +34,12 @@
     }
   }
   html,body{height:100%;}
-  body{ background:var(--bg); color:var(--ink); font-family:'Tajawal',sans-serif; -webkit-font-smoothing:antialiased; }
+  html{scroll-padding-top:env(safe-area-inset-top,0px);}
+  body{
+    background:var(--bg); color:var(--ink); font-family:'Tajawal',sans-serif; -webkit-font-smoothing:antialiased;
+    padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+    overflow-x:hidden;
+  }
   h1,h2,h3,.brandfont{font-family:'Cairo',sans-serif;}
   .card{background:var(--surface); border:1px solid var(--line); border-radius:14px;}
   .btn{border-radius:10px; font-weight:700; transition:transform .08s ease, opacity .15s ease; white-space:nowrap;}
@@ -48,19 +53,33 @@
   .btn-danger:hover{opacity:.9;}
   input,select,textarea{
     background:var(--surface); color:var(--ink); border:1px solid var(--line);
-    border-radius:10px; padding:.55rem .8rem; width:100%; font-family:inherit; font-size:.92rem;
+    border-radius:10px; padding:.6rem .8rem; width:100%; font-family:inherit; font-size:1rem;
   }
   input:focus,select:focus,textarea:focus{outline:2px solid var(--brand); outline-offset:1px; border-color:var(--brand);}
   label.field-label{font-size:.8rem; color:var(--ink-soft); font-weight:700; margin-bottom:.3rem; display:block;}
   .badge{display:inline-flex; align-items:center; gap:.35rem; padding:.28rem .7rem; border-radius:999px; font-size:.78rem; font-weight:700; white-space:nowrap;}
-  .navlink{display:flex; align-items:center; gap:.65rem; padding:.65rem .9rem; border-radius:10px; color:var(--ink-soft); font-weight:700; font-size:.9rem; cursor:pointer;}
+  .navlink{display:flex; align-items:center; gap:.65rem; padding:.7rem .9rem; border-radius:10px; color:var(--ink-soft); font-weight:700; font-size:.9rem; cursor:pointer; min-height:44px;}
   .navlink:hover{background:var(--surface-2); color:var(--ink);}
   .navlink.active{background:var(--brand-tint); color:var(--brand-dark);}
-  .scrollx{overflow-x:auto;}
+  .scrollx{overflow-x:auto; -webkit-overflow-scrolling:touch;}
   table{border-collapse:collapse; width:100%;}
   th{font-size:.76rem; color:var(--ink-soft); font-weight:700; text-align:right; padding:.6rem .8rem; border-bottom:1px solid var(--line); white-space:nowrap;}
   td{padding:.65rem .8rem; border-bottom:1px solid var(--line); font-size:.87rem; vertical-align:middle;}
   tr:hover td{background:var(--surface-2);}
+  /* Card-style table on phones: rows become stacked key/value cards instead of a squeezed, scrolling grid */
+  @media (max-width: 680px){
+    table.rtable thead{ display:none; }
+    table.rtable, table.rtable tbody, table.rtable tr, table.rtable td{ display:block; width:100%; }
+    table.rtable{ display:flex; flex-direction:column; gap:10px; }
+    table.rtable tr{ border:1px solid var(--line); border-radius:12px; padding:.65rem .9rem; background:var(--surface); }
+    table.rtable tr:hover td{ background:transparent; }
+    table.rtable td{ border:none; padding:.3rem 0; display:flex; justify-content:space-between; align-items:center; gap:.75rem; font-size:.86rem; }
+    table.rtable td::before{ content:attr(data-label); font-weight:700; color:var(--ink-soft); font-size:.74rem; flex-shrink:0; }
+    table.rtable td[data-label]:empty::before{ content:none; }
+    table.rtable td.rt-actions{ justify-content:flex-end; padding-top:.5rem; }
+    table.rtable td.rt-actions::before{ content:none; }
+    .scrollx{ overflow-x:visible; }
+  }
   .modal-backdrop{position:fixed; inset:0; background:rgba(10,20,17,.5); backdrop-filter:blur(2px); z-index:50; display:flex; align-items:center; justify-content:center; padding:1rem;}
   .avatar{width:44px; height:44px; border-radius:50%; object-fit:cover; background:var(--surface-2); border:1px solid var(--line);}
   .spin{animation:spin 1s linear infinite;}
@@ -192,7 +211,7 @@ onAuthStateChanged(auth, async (user)=>{
 function renderAuthScreen(errMsg){
   $('#app').innerHTML = `
   <div class="w-full min-h-screen flex items-center justify-center p-4">
-    <div class="card p-8 max-w-md w-full fade-in">
+    <div class="card p-6 sm:p-8 max-w-md w-full fade-in">
       <div class="flex items-center gap-3 mb-1">
         <div style="width:40px;height:40px;border-radius:11px;background:var(--brand);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-family:'Cairo',sans-serif">م</div>
         <h1 class="text-xl font-bold brandfont">مسار</h1>
@@ -226,7 +245,7 @@ function renderAuthScreen(errMsg){
 function renderNoProfileScreen(){
   $('#app').innerHTML = `
   <div class="w-full min-h-screen flex items-center justify-center p-4">
-    <div class="card p-8 max-w-md w-full fade-in text-center">
+    <div class="card p-6 sm:p-8 max-w-md w-full fade-in text-center">
       <h1 class="text-lg font-bold brandfont mb-2">لم يتم العثور على حساب لك</h1>
       <p class="text-sm mb-6" style="color:var(--ink-soft)">حسابك مُسجَّل للدخول لكن لا يوجد له ملف صفة داخل النظام. تواصل مع مسؤول الموارد البشرية لإنشاء حسابك بالصفة الصحيحة.</p>
       <button id="signoutBtn2" class="btn btn-ghost px-5 py-2.5 text-sm">تسجيل الخروج</button>
@@ -674,14 +693,14 @@ function renderUsersAdmin(){
       </div>
       <div class="card overflow-hidden">
         <div class="px-5 py-4 font-bold" style="border-bottom:1px solid var(--line)">المستخدمون الحاليون (${S.users.length})</div>
-        <div class="scrollx"><table>
+        <div class="scrollx"><table class="rtable">
           <thead><tr><th>الاسم</th><th>البريد الإلكتروني</th><th>الصفة</th><th>تاريخ الإنشاء</th></tr></thead>
           <tbody>
             ${S.users.length ? S.users.map(u=>`<tr>
-              <td class="font-bold">${esc(u.name||'—')}</td>
-              <td style="color:var(--ink-soft)">${esc(u.email||'—')}</td>
-              <td><span class="badge" style="background:${u.role==='hr'?'var(--brand-tint)':'var(--blue-tint)'};color:${u.role==='hr'?'var(--brand)':'var(--blue)'}">${esc(ROLE_LABEL[u.role]||u.role||'—')}</span></td>
-              <td style="color:var(--ink-soft)">${fmtD(u.createdAt)}</td>
+              <td data-label="الاسم" class="font-bold">${esc(u.name||'—')}</td>
+              <td data-label="البريد الإلكتروني" style="color:var(--ink-soft)">${esc(u.email||'—')}</td>
+              <td data-label="الصفة"><span class="badge" style="background:${u.role==='hr'?'var(--brand-tint)':'var(--blue-tint)'};color:${u.role==='hr'?'var(--brand)':'var(--blue)'}">${esc(ROLE_LABEL[u.role]||u.role||'—')}</span></td>
+              <td data-label="تاريخ الإنشاء" style="color:var(--ink-soft)">${fmtD(u.createdAt)}</td>
             </tr>`).join('') : `<tr><td colspan="4" class="text-center py-6" style="color:var(--ink-soft)">لا يوجد مستخدمون بعد</td></tr>`}
           </tbody>
         </table></div>
@@ -759,15 +778,18 @@ function renderLogTable(){
 function requestsTable(items){
   if(!items.length) return emptyState('لا توجد طلبات مطابقة', 'جرّب تعديل عوامل البحث أعلاه.');
   return `
-  <div class="scrollx"><table>
+  <div class="scrollx"><table class="rtable">
     <thead><tr><th>رقم الطلب</th><th>الموظف</th><th>الهوية</th><th>الكفيل</th><th>الشركة</th><th>الحالة</th><th>تاريخ الطلب</th><th></th></tr></thead>
     <tbody>
       ${items.map(r=>{ const st = STATUS[r.status]||STATUS.sent; return `<tr>
-        <td class="font-bold">${esc(r.requestNumber)}</td><td>${esc(r.employeeNameAr)}</td><td>${esc(r.idNumber)}</td>
-        <td>${esc(r.sponsorName)}</td><td>${esc(r.companyName)}</td>
-        <td><span class="badge" style="background:${st.tint};color:${st.fg}">${st.label}</span></td>
-        <td style="color:var(--ink-soft)">${fmtD(r.createdAt)}</td>
-        <td><button class="btn btn-ghost px-2.5 py-1 text-xs" data-openreq="${r.id}">تفاصيل</button></td></tr>`; }).join('')}
+        <td data-label="رقم الطلب" class="font-bold">${esc(r.requestNumber)}</td>
+        <td data-label="الموظف">${esc(r.employeeNameAr)}</td>
+        <td data-label="الهوية">${esc(r.idNumber)}</td>
+        <td data-label="الكفيل">${esc(r.sponsorName)}</td>
+        <td data-label="الشركة">${esc(r.companyName)}</td>
+        <td data-label="الحالة"><span class="badge" style="background:${st.tint};color:${st.fg}">${st.label}</span></td>
+        <td data-label="التاريخ" style="color:var(--ink-soft)">${fmtD(r.createdAt)}</td>
+        <td class="rt-actions"><button class="btn btn-ghost px-2.5 py-1 text-xs" data-openreq="${r.id}">تفاصيل</button></td></tr>`; }).join('')}
     </tbody>
   </table></div>`;
 }
