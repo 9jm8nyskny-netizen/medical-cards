@@ -84,7 +84,7 @@
 
 <script type="module">
 /* ============================= FIREBASE ============================= */
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import {
   getAuth, onAuthStateChanged, createUserWithEmailAndPassword,
   signInWithEmailAndPassword, signOut, updateProfile
@@ -127,7 +127,7 @@ const ROLE_LABEL = { hr: 'مسؤول الموارد البشرية', reception: 
 const S = {
   me:{ uid:null, name:'', email:'' },
   role:null,
-  requests:[], notifications:[], companies:[], sponsors:[],
+  requests:[], notifications:[], companies:[], sponsors:[], users:[],
   unsubs:[],
   tab:null,
   filters:{ q:'', status:'', company:'', sponsor:'', from:'', to:'' },
@@ -178,9 +178,10 @@ onAuthStateChanged(auth, async (user)=>{
       S.role = uSnap.data().role;
       startApp();
     } else {
-      // authenticated but no profile doc yet (edge case) -> ask role
+      // authenticated but no profile doc (shouldn't normally happen since
+      // accounts are only created by HR through the app) -> block access
       S.me.name = user.displayName || '';
-      renderRolePicker();
+      renderNoProfileScreen();
     }
   }catch(e){
     console.error(e);
@@ -198,11 +199,6 @@ function renderAuthScreen(errMsg){
       </div>
       <p class="text-sm mb-6" style="color:var(--ink-soft)">إدارة طلبات الفحص الطبي للموظفين</p>
 
-      <div class="flex gap-1 mb-5 p-1 rounded-xl" style="background:var(--surface-2)">
-        <button id="tabLogin" class="flex-1 py-2 rounded-lg text-sm font-bold" style="background:var(--surface)">تسجيل الدخول</button>
-        <button id="tabSignup" class="flex-1 py-2 rounded-lg text-sm font-bold" style="color:var(--ink-soft)">حساب جديد</button>
-      </div>
-
       <div id="errSlot" class="mb-3">${errMsg? `<div class="err-box">${esc(errMsg)}</div>`:''}</div>
 
       <form id="loginForm" class="grid gap-3">
@@ -210,35 +206,9 @@ function renderAuthScreen(errMsg){
         <div><label class="field-label">كلمة المرور</label><input required type="password" name="password"></div>
         <button type="submit" id="loginBtn" class="btn btn-brand py-2.5 mt-1">دخول</button>
       </form>
-
-      <form id="signupForm" class="grid gap-3 hidden">
-        <div><label class="field-label">الاسم</label><input required name="name"></div>
-        <div><label class="field-label">البريد الإلكتروني</label><input required type="email" name="email"></div>
-        <div><label class="field-label">كلمة المرور</label><input required type="password" name="password" minlength="6"></div>
-        <div>
-          <label class="field-label">الصفة</label>
-          <select name="role">
-            <option value="hr">مسؤول الموارد البشرية</option>
-            <option value="reception">موظف استقبال المركز الطبي</option>
-          </select>
-        </div>
-        <button type="submit" id="signupBtn" class="btn btn-brand py-2.5 mt-1">إنشاء الحساب</button>
-      </form>
+      <p class="text-xs mt-5 text-center" style="color:var(--ink-soft)">الحسابات تُنشأ فقط من قِبل مسؤول الموارد البشرية. إذا لم يكن لديك حساب تواصل معه.</p>
     </div>
   </div>`;
-
-  const showLogin = ()=>{
-    $('#loginForm').classList.remove('hidden'); $('#signupForm').classList.add('hidden');
-    $('#tabLogin').style.background='var(--surface)'; $('#tabLogin').style.color='var(--ink)';
-    $('#tabSignup').style.background='transparent'; $('#tabSignup').style.color='var(--ink-soft)';
-  };
-  const showSignup = ()=>{
-    $('#signupForm').classList.remove('hidden'); $('#loginForm').classList.add('hidden');
-    $('#tabSignup').style.background='var(--surface)'; $('#tabSignup').style.color='var(--ink)';
-    $('#tabLogin').style.background='transparent'; $('#tabLogin').style.color='var(--ink-soft)';
-  };
-  $('#tabLogin').onclick = showLogin;
-  $('#tabSignup').onclick = showSignup;
 
   $('#loginForm').addEventListener('submit', async (e)=>{
     e.preventDefault();
@@ -251,48 +221,18 @@ function renderAuthScreen(errMsg){
       $('#errSlot').innerHTML = `<div class="err-box">${esc(arError(err.code))}</div>`;
     }finally{ btn.disabled=false; btn.textContent='دخول'; }
   });
-
-  $('#signupForm').addEventListener('submit', async (e)=>{
-    e.preventDefault();
-    const fd = new FormData(e.target);
-    const btn = $('#signupBtn'); btn.disabled = true; btn.textContent = 'جارِ الإنشاء…';
-    try{
-      const cred = await createUserWithEmailAndPassword(auth, fd.get('email'), fd.get('password'));
-      await updateProfile(cred.user, { displayName: fd.get('name') });
-      await setDoc(doc(db,'users',cred.user.uid), {
-        name: fd.get('name'), email: fd.get('email'), role: fd.get('role'), createdAt: nowISO()
-      });
-    }catch(err){
-      console.error(err);
-      $('#errSlot').innerHTML = `<div class="err-box">${esc(arError(err.code))}</div>`;
-    }finally{ btn.disabled=false; btn.textContent='إنشاء الحساب'; }
-  });
 }
 
-function renderRolePicker(){
+function renderNoProfileScreen(){
   $('#app').innerHTML = `
   <div class="w-full min-h-screen flex items-center justify-center p-4">
-    <div class="card p-8 max-w-md w-full fade-in">
-      <h1 class="text-xl font-bold brandfont mb-1">أكمل الإعداد</h1>
-      <p class="text-sm mb-6" style="color:var(--ink-soft)">اختر صفتك في النظام</p>
-      <div class="flex flex-col gap-3">
-        <button id="pick-hr" class="btn p-4 text-right" style="border:1.5px solid var(--line);border-radius:12px;">
-          <div class="font-bold mb-1">مسؤول الموارد البشرية</div>
-        </button>
-        <button id="pick-reception" class="btn p-4 text-right" style="border:1.5px solid var(--line);border-radius:12px;">
-          <div class="font-bold mb-1">موظف استقبال المركز الطبي</div>
-        </button>
-      </div>
+    <div class="card p-8 max-w-md w-full fade-in text-center">
+      <h1 class="text-lg font-bold brandfont mb-2">لم يتم العثور على حساب لك</h1>
+      <p class="text-sm mb-6" style="color:var(--ink-soft)">حسابك مُسجَّل للدخول لكن لا يوجد له ملف صفة داخل النظام. تواصل مع مسؤول الموارد البشرية لإنشاء حسابك بالصفة الصحيحة.</p>
+      <button id="signoutBtn2" class="btn btn-ghost px-5 py-2.5 text-sm">تسجيل الخروج</button>
     </div>
   </div>`;
-  $('#pick-hr').onclick = ()=>chooseRole('hr');
-  $('#pick-reception').onclick = ()=>chooseRole('reception');
-}
-async function chooseRole(role){
-  try{
-    await setDoc(doc(db,'users',S.me.uid), { name:S.me.name||'', email:S.me.email||'', role, createdAt: nowISO() });
-    S.role = role; startApp();
-  }catch(e){ console.error(e); toast('تعذّر الحفظ، حاول مرة أخرى','error'); }
+  $('#signoutBtn2').onclick = ()=>signOut(auth);
 }
 
 /* ============================= APP SHELL ============================= */
@@ -310,6 +250,7 @@ function buildShell(){
     {id:'dashboard', label:'لوحة التحكم', icon:iconGrid},
     {id:'new', label:'طلب فحص جديد', icon:iconPlus},
     {id:'log', label:'سجل الطلبات', icon:iconList},
+    {id:'users', label:'إدارة المستخدمين', icon:iconUsers},
   ] : [
     {id:'inbox', label:'الطلبات الواردة', icon:iconInbox},
     {id:'log', label:'جميع الطلبات', icon:iconList},
@@ -381,7 +322,7 @@ function closeMobileNav(){ $('#mobileNav').classList.add('hidden'); }
 function setTab(tab){
   S.tab = tab;
   document.querySelectorAll('[data-tab]').forEach(n=> n.classList.toggle('active', n.dataset.tab===tab));
-  const titles = { dashboard:'لوحة التحكم', new:'إنشاء طلب فحص طبي جديد', log:'سجل الطلبات', inbox:'الطلبات الواردة' };
+  const titles = { dashboard:'لوحة التحكم', new:'إنشاء طلب فحص طبي جديد', log:'سجل الطلبات', inbox:'الطلبات الواردة', users:'إدارة المستخدمين' };
   $('#pageTitle').textContent = titles[tab] || '';
   renderTab();
 }
@@ -411,6 +352,14 @@ function subscribeAll(){
     S.sponsors = snap.docs.map(d=>d.data().name).filter(Boolean);
     refreshDatalists();
   }, e=>console.error('sponsors sub', e)));
+
+  if(S.role==='hr'){
+    const usersQ = query(collection(db,'users'), orderBy('createdAt','desc'), limit(500));
+    S.unsubs.push(onSnapshot(usersQ, snap=>{
+      S.users = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+      if(S.tab==='users') renderUsersAdmin();
+    }, e=>console.error('users sub', e)));
+  }
 }
 function refreshDatalists(){
   const c = $('#companiesList'); if(c) c.innerHTML = S.companies.map(x=>`<option value="${esc(x)}">`).join('');
@@ -477,6 +426,7 @@ function renderTab(){
   if(S.tab==='new') return renderNewRequest();
   if(S.tab==='log') return renderLog();
   if(S.tab==='inbox') return renderInbox();
+  if(S.tab==='users') return renderUsersAdmin();
 }
 
 /* ---------------- HR: Dashboard ---------------- */
@@ -697,6 +647,78 @@ function openRejectModal(id){
 }
 function closeModal(){ document.querySelectorAll('.modal-backdrop').forEach(m=>m.remove()); }
 
+/* ---------------- HR: User Management ---------------- */
+function renderUsersAdmin(){
+  const body = $('#pageBody'); if(!body) return;
+  body.innerHTML = `
+    <div class="grid gap-6" style="grid-template-columns:minmax(0,1fr);max-width:900px">
+      <div class="card p-5 md:p-6">
+        <h3 class="font-bold mb-4">إنشاء حساب جديد</h3>
+        <form id="newUserForm" class="grid md:grid-cols-2 gap-4">
+          <div><label class="field-label">الاسم *</label><input required name="name"></div>
+          <div><label class="field-label">البريد الإلكتروني *</label><input required type="email" name="email"></div>
+          <div><label class="field-label">كلمة مرور مؤقتة *</label><input required type="text" name="password" minlength="6" placeholder="6 أحرف على الأقل"></div>
+          <div>
+            <label class="field-label">الصفة *</label>
+            <select name="role">
+              <option value="reception">موظف استقبال المركز الطبي</option>
+              <option value="hr">مسؤول الموارد البشرية</option>
+            </select>
+          </div>
+          <div class="md:col-span-2 flex items-center gap-3 pt-1">
+            <button type="submit" id="createUserBtn" class="btn btn-brand px-5 py-2.5">إنشاء الحساب</button>
+            <span id="newUserMsg" class="text-xs" style="color:var(--ink-soft)"></span>
+          </div>
+        </form>
+        <p class="text-xs mt-3" style="color:var(--ink-soft)">شارك البريد وكلمة المرور المؤقتة مع الموظف؛ لا توجد حالياً خاصية لتغيير كلمة المرور من داخل التطبيق — يمكن ذلك لاحقاً من Firebase Console.</p>
+      </div>
+      <div class="card overflow-hidden">
+        <div class="px-5 py-4 font-bold" style="border-bottom:1px solid var(--line)">المستخدمون الحاليون (${S.users.length})</div>
+        <div class="scrollx"><table>
+          <thead><tr><th>الاسم</th><th>البريد الإلكتروني</th><th>الصفة</th><th>تاريخ الإنشاء</th></tr></thead>
+          <tbody>
+            ${S.users.length ? S.users.map(u=>`<tr>
+              <td class="font-bold">${esc(u.name||'—')}</td>
+              <td style="color:var(--ink-soft)">${esc(u.email||'—')}</td>
+              <td><span class="badge" style="background:${u.role==='hr'?'var(--brand-tint)':'var(--blue-tint)'};color:${u.role==='hr'?'var(--brand)':'var(--blue)'}">${esc(ROLE_LABEL[u.role]||u.role||'—')}</span></td>
+              <td style="color:var(--ink-soft)">${fmtD(u.createdAt)}</td>
+            </tr>`).join('') : `<tr><td colspan="4" class="text-center py-6" style="color:var(--ink-soft)">لا يوجد مستخدمون بعد</td></tr>`}
+          </tbody>
+        </table></div>
+      </div>
+    </div>`;
+
+  $('#newUserForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const name = fd.get('name').trim(), email = fd.get('email').trim(), password = fd.get('password'), role = fd.get('role');
+    const btn = $('#createUserBtn'); const msg = $('#newUserMsg');
+    btn.disabled = true; btn.textContent = 'جارِ الإنشاء…'; msg.textContent = '';
+
+    // Create the auth account on a throwaway secondary Firebase app instance
+    // so this does NOT replace the currently signed-in HR session.
+    let secondaryApp;
+    try{
+      secondaryApp = initializeApp(firebaseConfig, 'UserCreator-' + Date.now());
+      const secondaryAuth = getAuth(secondaryApp);
+      const cred = await createUserWithEmailAndPassword(secondaryAuth, email, password);
+      await updateProfile(cred.user, { displayName: name });
+      const newUid = cred.user.uid;
+      await signOut(secondaryAuth);
+      await setDoc(doc(db,'users',newUid), { name, email, role, createdAt: nowISO(), createdBy: S.me.uid });
+      await addDoc(collection(db,'logs'), { requestId:null, requestNumber:null, action:'تم إنشاء حساب مستخدم', details:`${name} (${email}) — ${ROLE_LABEL[role]}`, byUserId:S.me.uid, byUserName:S.me.name||'', role:S.role, at:nowISO() });
+      toast(`تم إنشاء حساب ${name} بنجاح`);
+      e.target.reset();
+    }catch(err){
+      console.error(err);
+      msg.innerHTML = `<span style="color:var(--red)">${esc(arError(err.code))}</span>`;
+    }finally{
+      if(secondaryApp){ try{ await deleteApp(secondaryApp); }catch(e){} }
+      btn.disabled = false; btn.textContent = 'إنشاء الحساب';
+    }
+  });
+}
+
 /* ---------------- Shared: Requests Log ---------------- */
 function renderLog(){
   const body = $('#pageBody'); if(!body) return;
@@ -816,6 +838,7 @@ const iconInbox = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" s
 const iconBell = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>`;
 const iconMenu = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>`;
 const iconUser = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>`;
+const iconUsers = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`;
 </script>
 </body>
 </html>
