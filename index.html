@@ -121,9 +121,6 @@ import {
   getFirestore, collection, doc, addDoc, setDoc, updateDoc, getDoc,
   onSnapshot, query, where, orderBy, limit
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
-import {
-  getStorage, ref, uploadBytes, getDownloadURL
-} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-storage.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyD-4YAtzuOHW8PPCQX_FkniQovAAoNOesk",
@@ -137,7 +134,6 @@ const firebaseConfig = {
 const fbApp = initializeApp(firebaseConfig);
 const auth = getAuth(fbApp);
 const db = getFirestore(fbApp);
-const storage = getStorage(fbApp);
 
 /* ============================= CONFIG ============================= */
 const STATUS = {
@@ -395,6 +391,43 @@ function refreshDatalists(){
   const b = $('#billingList'); if(b) b.innerHTML = S.companies.map(x=>`<option value="${esc(x)}">`).join('');
   const s = $('#sponsorsList'); if(s) s.innerHTML = S.sponsors.map(x=>`<option value="${esc(x)}">`).join('');
 }
+
+/* ---- Photo handling: resize + compress locally in the browser, store as a
+   data URL directly inside the Firestore document. No Firebase Storage
+   involved at all, so it stays fully free on the Spark plan. ---- */
+function resizeImageToDataURL(file, maxDim=320, quality=0.72){
+  return new Promise((resolve, reject)=>{
+    if(!file.type || !file.type.startsWith('image/')){ reject(new Error('not-image')); return; }
+    const reader = new FileReader();
+    reader.onerror = ()=> reject(new Error('read-failed'));
+    reader.onload = ()=>{
+      const img = new Image();
+      img.onerror = ()=> reject(new Error('decode-failed'));
+      img.onload = ()=>{
+        let w = img.width, h = img.height;
+        if(w >= h){ if(w > maxDim){ h = Math.round(h * maxDim / w); w = maxDim; } }
+        else{ if(h > maxDim){ w = Math.round(w * maxDim / h); h = maxDim; } }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        try{
+          const dataUrl = canvas.toDataURL('image/jpeg', quality);
+          if(dataUrl.length > 700000){ reject(new Error('too-large')); return; }
+          resolve(dataUrl);
+        }catch(e){ reject(e); }
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+function photoErrorMessage(err){
+  const code = err && err.message;
+  if(code === 'not-image') return 'الملف المختار ليس صورة.';
+  if(code === 'too-large') return 'الصورة كبيرة جداً حتى بعد الضغط — جرّب صورة أخرى.';
+  return 'تعذّرت معالجة الصورة — جرّب صورة أخرى.';
+}
+
 function myNotifications(){ return S.notifications.filter(n => n.toRole===S.role || n.toUserId===S.me.uid); }
 function updateNotifDot(){
   const unread = myNotifications().filter(n=>!n.read).length;
@@ -527,20 +560,18 @@ function renderNewRequest(){
     const f = e.target.files[0]; if(!f) return;
     const statusEl = $('#photoStatus');
     const submitBtn = $('#submitBtn');
-    statusEl.textContent = 'جارِ الرفع…';
+    statusEl.textContent = 'جارِ معالجة الصورة…';
     S.pendingPhotoURL = null;
     submitBtn.disabled = true;
     S.photoUploadPromise = (async ()=>{
       try{
-        const sRef = ref(storage, `employee-photos/${Date.now()}_${f.name}`);
-        await uploadBytes(sRef, f);
-        const url = await getDownloadURL(sRef);
+        const url = await resizeImageToDataURL(f);
         S.pendingPhotoURL = url;
         $('#photoPreviewWrap').innerHTML = `<img src="${url}" class="avatar" style="width:64px;height:64px">`;
-        statusEl.textContent = 'تم رفع الصورة ✓';
+        statusEl.textContent = 'تم تجهيز الصورة ✓';
         return url;
       }catch(err){
-        console.error(err); statusEl.textContent = 'تعذّر رفع الصورة'; toast('تعذّر رفع الصورة — تأكد من إعداد Storage','error');
+        console.error(err); statusEl.textContent = 'تعذّر معالجة الصورة'; toast(photoErrorMessage(err),'error');
         throw err;
       }finally{
         submitBtn.disabled = false;
@@ -557,9 +588,9 @@ function renderNewRequest(){
     }
     const btn = $('#submitBtn');
     if(S.photoUploadPromise){
-      btn.disabled = true; btn.textContent = 'جارِ انتظار رفع الصورة…';
+      btn.disabled = true; btn.textContent = 'جارِ تجهيز الصورة…';
       try{ await S.photoUploadPromise; }
-      catch(err){ btn.disabled = false; btn.textContent = 'حفظ وإرسال الطلب'; toast('تعذّر رفع الصورة — احذفها أو أعد اختيارها قبل الحفظ','error'); return; }
+      catch(err){ btn.disabled = false; btn.textContent = 'حفظ وإرسال الطلب'; toast('تعذّر تجهيز الصورة — احذفها أو أعد اختيارها قبل الحفظ','error'); return; }
     }
     btn.disabled = true; btn.textContent = 'جارِ الحفظ…';
     try{
@@ -948,14 +979,12 @@ function openEditModal(id){
     statusEl.textContent = 'جارِ الرفع…'; saveBtn.disabled = true;
     S.editPhotoUploadPromise = (async ()=>{
       try{
-        const sRef = ref(storage, `employee-photos/${Date.now()}_${f.name}`);
-        await uploadBytes(sRef, f);
-        const url = await getDownloadURL(sRef);
+        const url = await uploadEmployeePhoto(f);
         S.editPendingPhotoURL = url;
         wrap.querySelector('#editPhotoPreviewWrap').innerHTML = `<img src="${url}" class="avatar" style="width:64px;height:64px">`;
         statusEl.textContent = 'تم رفع الصورة ✓';
         return url;
-      }catch(err){ console.error(err); statusEl.textContent='تعذّر رفع الصورة'; toast('تعذّر رفع الصورة','error'); throw err; }
+      }catch(err){ console.error(err); statusEl.textContent='تعذّر رفع الصورة'; toast(photoErrorMessage(err),'error'); throw err; }
       finally{ saveBtn.disabled = false; }
     })();
   });
@@ -969,9 +998,9 @@ function openEditModal(id){
     }
     const saveBtn = wrap.querySelector('#editSaveBtn');
     if(S.editPhotoUploadPromise){
-      saveBtn.disabled = true; saveBtn.textContent = 'جارِ انتظار رفع الصورة…';
+      saveBtn.disabled = true; saveBtn.textContent = 'جارِ تجهيز الصورة…';
       try{ await S.editPhotoUploadPromise; }
-      catch(err){ saveBtn.disabled=false; saveBtn.textContent='حفظ التعديلات'; toast('تعذّر رفع الصورة، أعد المحاولة قبل الحفظ','error'); return; }
+      catch(err){ saveBtn.disabled=false; saveBtn.textContent='حفظ التعديلات'; toast('تعذّر تجهيز الصورة، أعد المحاولة قبل الحفظ','error'); return; }
     }
     saveBtn.disabled = true; saveBtn.textContent = 'جارِ الحفظ…';
     try{
