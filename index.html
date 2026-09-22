@@ -1,59 +1,130 @@
-// 1. دالة يتم استدعاؤها عند إرسال الموظف لطلب جديد
-function onEmployeeSubmitRequest(e) {
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-  var rowData = e.values; // البيانات المرسلة من النموذج
-  
-  // تعيين حالة الطلب إلى "قيد الانتظار" تلقائياً
-  var lastRow = sheet.getLastRow();
-  sheet.getRange(lastRow, 4).setValue("Pending"); // فرضاً أن العمود الرابع هو Status
-  
-  // إرسال إشعار للمسؤول (أنت) بوجود طلب جديد
-  var adminEmail = "your-email@domain.com"; // ضع بريدك الإلكتروني هنا
-  var subject = "طلب فتح حساب جديد من: " + rowData[1]; // اسم الموظف
-  var body = "قام الموظف " + rowData[1] + " بتقديم طلب فتح حساب.\n\n" +
-             "البريد الإلكتروني: " + rowData[2] + "\n" +
-             "يرجى الدخول إلى النظام للموافقة أو الرفض.";
-             
-  MailApp.sendEmail(adminEmail, subject, body);
-}
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام طلب فتح حساب</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f6f9; }
+        .container { max-width: 700px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        h2 { color: #333; border-bottom: 2px solid #007bff; padding-bottom: 8px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="text"], input[type="email"] { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        button { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; color: white; font-weight: bold; }
+        .btn-submit { background-color: #28a745; }
+        .btn-approve { background-color: #007bff; margin-left: 5px; }
+        .btn-reject { background-color: #dc3545; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: right; }
+        th { background-color: #f8f9fa; }
+        .badge { padding: 4px 8px; border-radius: 4px; color: white; font-size: 12px; }
+        .pending { background-color: #ffc107; color: black; }
+        .approved { background-color: #28a745; }
+        .rejected { background-color: #dc3545; }
+    </style>
+</head>
+<body>
 
-// 2. دالة معالجة قرار المسؤول (موافقة / رفض)
-function processAdminDecision(requestId, decision, adminNotes) {
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-  var data = sheet.getDataRange().getValues();
-  
-  for (var i = 1; i < data.length; i++) {
-    if (data[i][0] == requestId) { // البحث برقم ID
-      var rowIndex = i + 1;
-      var employeeEmail = data[i][2]; // بريد الموظف
-      var employeeName = data[i][1];  // اسم الموظف
-      
-      if (decision === "Approved") {
-        sheet.getRange(rowIndex, 4).setValue("Approved"); // تحديث الحالة إلى مقبول
-        sendNotificationToEmployee(employeeEmail, employeeName, true, adminNotes);
-      } else if (decision === "Rejected") {
-        sheet.getRange(rowIndex, 4).setValue("Rejected"); // تحديث الحالة إلى مرفوض
-        sendNotificationToEmployee(employeeEmail, employeeName, false, adminNotes);
-      }
-      break;
+<div class="container">
+    <h2>1. تقديم طلب فتح حساب (الموظف)</h2>
+    <form id="requestForm">
+        <div class="form-group">
+            <label for="empName">اسم الموظف:</label>
+            <input type="text" id="empName" required>
+        </div>
+        <div class="form-group">
+            <label for="empEmail">البريد الإلكتروني:</label>
+            <input type="email" id="empEmail" required>
+        </div>
+        <button type="submit" class="btn-submit">إرسال الطلب</button>
+    </form>
+
+    <hr style="margin: 30px 0;">
+
+    <h2>2. لوحة تحكم المسؤول (الموافقة / الرفض)</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>اسم الموظف</th>
+                <th>البريد الإلكتروني</th>
+                <th>الحالة</th>
+                <th>الإجراء</th>
+            </tr>
+        </thead>
+        <tbody id="requestsTable">
+            <!-- ستظهر الطلبات هنا -->
+        </tbody>
+    </table>
+</div>
+
+<script>
+    let requests = JSON.parse(localStorage.getItem('accountRequests')) || [];
+
+    // حفظ الطلب الجديد
+    document.getElementById('requestForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const name = document.getElementById('empName').value;
+        const email = document.getElementById('empEmail').value;
+
+        const newRequest = {
+            id: Date.now(),
+            name: name,
+            email: email,
+            status: 'قيد الانتظار'
+        };
+
+        requests.push(newRequest);
+        saveAndRender();
+        this.reset();
+    });
+
+    // تغيير حالة الطلب (موافقة / رفض)
+    function updateStatus(id, newStatus) {
+        requests = requests.map(req => {
+            if (req.id === id) {
+                return { ...req, status: newStatus };
+            }
+            return req;
+        });
+        saveAndRender();
     }
-  }
-}
 
-// 3. دالة إرسال النتيجة للموظف
-function sendNotificationToEmployee(email, name, isApproved, notes) {
-  var subject = "";
-  var body = "";
-  
-  if (isApproved) {
-    subject = "تمت الموافقة على طلب فتح الحساب الخاص بك";
-    body = "مرحباً " + name + "،\n\nتمت الموافقة على طلب فتح الحساب بنجاح.\n" +
-           "ملاحظات: " + (notes || "لا يوجد");
-  } else {
-    subject = "تحديث بشأن طلب فتح الحساب الخاص بك";
-    body = "مرحباً " + name + "،\n\nنأسف لإبلاغك بأنه تم رفض طلب فتح الحساب.\n" +
-           "سبب الرفض / ملاحظات: " + (notes || "لا يوجد");
-  }
-  
-  MailApp.sendEmail(email, subject, body);
-}
+    // حفظ وحفظ العرض
+    function saveAndRender() {
+        localStorage.setItem('accountRequests', JSON.stringify(requests));
+        renderTable();
+    }
+
+    // عرض الطلبات في الجدول
+    function renderTable() {
+        const tbody = document.getElementById('requestsTable');
+        tbody.innerHTML = '';
+
+        requests.forEach(req => {
+            let statusClass = 'pending';
+            if (req.status === 'مقبول') statusClass = 'approved';
+            if (req.status === 'مرفوض') statusClass = 'rejected';
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${req.name}</td>
+                <td>${req.email}</td>
+                <td><span class="badge ${statusClass}">${req.status}</span></td>
+                <td>
+                    ${req.status === 'قيد الانتظار' ? `
+                        <button class="btn-approve" onclick="updateStatus(${req.id}, 'مقبول')">موافقة</button>
+                        <button class="btn-reject" onclick="updateStatus(${req.id}, 'مرفوض')">رفض</button>
+                    ` : 'تم اتخاذ الإجراء'}
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // عرض البيانات عند التحميل
+    renderTable();
+</script>
+
+</body>
+</html>
