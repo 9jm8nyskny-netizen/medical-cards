@@ -37,7 +37,7 @@
   body{ background:var(--bg); color:var(--ink); font-family:'Tajawal',sans-serif; -webkit-font-smoothing:antialiased; }
   h1,h2,h3,.brandfont{font-family:'Cairo',sans-serif;}
   .card{background:var(--surface); border:1px solid var(--line); border-radius:14px;}
-  .btn{border-radius:10px; font-weight:700; transition:transform .08s ease, opacity .15s ease; white-space:nowrap;}
+  .btn{border-radius:10px; font-weight:700; transition:transform .08s ease, opacity .15s ease; white-space:nowrap; display:inline-flex; align-items:center; justify-content:center; gap:0.4rem;}
   .btn:active{transform:scale(.97);}
   .btn:disabled{opacity:.55; cursor:not-allowed;}
   .btn-brand{background:var(--brand); color:#fff;}
@@ -48,7 +48,7 @@
   .btn-danger:hover{opacity:.9;}
   input,select,textarea{
     background:var(--surface); color:var(--ink); border:1px solid var(--line);
-    border-radius:10px; padding:.55rem .8rem; width:100%; font-family:inherit; font-size:.92rem;
+    border-radius:10px; padding:.65rem .8rem; width:100%; font-family:inherit; font-size:.92rem;
   }
   input:focus,select:focus,textarea:focus{outline:2px solid var(--brand); outline-offset:1px; border-color:var(--brand);}
   label.field-label{font-size:.8rem; color:var(--ink-soft); font-weight:700; margin-bottom:.3rem; display:block;}
@@ -58,22 +58,56 @@
   .navlink.active{background:var(--brand-tint); color:var(--brand-dark);}
   .scrollx{overflow-x:auto;}
   table{border-collapse:collapse; width:100%;}
-  th{font-size:.76rem; color:var(--ink-soft); font-weight:700; text-align:right; padding:.6rem .8rem; border-bottom:1px solid var(--line); white-space:nowrap;}
-  td{padding:.65rem .8rem; border-bottom:1px solid var(--line); font-size:.87rem; vertical-align:middle;}
+  th{font-size:.76rem; color:var(--ink-soft); font-weight:700; text-align:right; padding:.65rem .8rem; border-bottom:1px solid var(--line); white-space:nowrap;}
+  td{padding:.75rem .8rem; border-bottom:1px solid var(--line); font-size:.87rem; vertical-align:middle;}
   tr:hover td{background:var(--surface-2);}
-  .modal-backdrop{position:fixed; inset:0; background:rgba(10,20,17,.5); backdrop-filter:blur(2px); z-index:50; display:flex; align-items:center; justify-content:center; padding:1rem;}
-  .avatar{width:44px; height:44px; border-radius:50%; object-fit:cover; background:var(--surface-2); border:1px solid var(--line);}
+  .modal-backdrop{position:fixed; inset:0; background:rgba(10,20,17,.5); backdrop-filter:blur(3px); z-index:100; display:flex; align-items:center; justify-content:center; padding:1rem;}
+  .avatar{width:44px; height:44px; border-radius:50%; object-fit:cover; background:var(--surface-2); border:1px solid var(--line); shrink:0;}
   .spin{animation:spin 1s linear infinite;}
   @keyframes spin{to{transform:rotate(360deg);}}
   .fade-in{animation:fadein .25s ease;}
   @keyframes fadein{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;}}
-  ::-webkit-scrollbar{height:8px; width:8px;}
+  ::-webkit-scrollbar{height:6px; width:6px;}
   ::-webkit-scrollbar-thumb{background:var(--line); border-radius:8px;}
   .stat-num{font-family:'Cairo',sans-serif; font-weight:800; font-size:1.7rem;}
   .err-box{background:var(--red-tint); color:var(--red); border-radius:10px; padding:.6rem .8rem; font-size:.8rem;}
+
+  /* Mobile Bottom Navigation Bar Styles */
+  .bottom-nav {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 64px;
+    background: var(--surface);
+    border-top: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    z-index: 50;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .bottom-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--ink-soft);
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+  }
+  .bottom-nav-item.active {
+    color: var(--brand);
+  }
+  .bottom-nav-item svg {
+    width: 22px;
+    height: 22px;
+  }
 </style>
 </head>
-<body>
+<body class="pb-16 md:pb-0">
 
 <div id="app" class="min-h-screen flex items-center justify-center">
   <div class="flex flex-col items-center gap-3" style="color:var(--ink-soft)">
@@ -147,9 +181,9 @@ const genReqNumber = () => {
   return `MED-${ymd}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;
 };
 function toast(msg, kind){
-  const box = $('#toastbox') || (()=>{ const b=el('div',''); b.id='toastbox'; b.style.cssText='position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:80;display:flex;flex-direction:column;gap:8px;align-items:center;'; document.body.appendChild(b); return b; })();
+  const box = $('#toastbox') || (()=>{ const b=el('div',''); b.id='toastbox'; b.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:120;display:flex;flex-direction:column;gap:8px;align-items:center;'; document.body.appendChild(b); return b; })();
   const t = el('div','fade-in', esc(msg));
-  t.style.cssText = `background:${kind==='error'?'var(--red)':'var(--brand-dark)'};color:#fff;padding:.6rem 1.1rem;border-radius:10px;font-size:.85rem;font-weight:700;box-shadow:0 6px 20px rgba(0,0,0,.18);`;
+  t.style.cssText = `background:${kind==='error'?'var(--red)':'var(--brand-dark)'};color:#fff;padding:.6rem 1.1rem;border-radius:10px;font-size:.85rem;font-weight:700;box-shadow:0 6px 20px rgba(0,0,0,.18);text-align:center;`;
   box.appendChild(t);
   setTimeout(()=>{ t.style.opacity='0'; t.style.transition='opacity .3s'; setTimeout(()=>t.remove(),300); }, 2600);
 }
@@ -178,7 +212,6 @@ onAuthStateChanged(auth, async (user)=>{
       S.role = uSnap.data().role;
       startApp();
     } else {
-      // authenticated but no profile doc yet (edge case) -> ask role
       S.me.name = user.displayName || '';
       renderRolePicker();
     }
@@ -191,7 +224,7 @@ onAuthStateChanged(auth, async (user)=>{
 function renderAuthScreen(errMsg){
   $('#app').innerHTML = `
   <div class="w-full min-h-screen flex items-center justify-center p-4">
-    <div class="card p-8 max-w-md w-full fade-in">
+    <div class="card p-6 md:p-8 max-w-md w-full fade-in">
       <div class="flex items-center gap-3 mb-1">
         <div style="width:40px;height:40px;border-radius:11px;background:var(--brand);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-family:'Cairo',sans-serif">م</div>
         <h1 class="text-xl font-bold brandfont">مسار</h1>
@@ -208,7 +241,7 @@ function renderAuthScreen(errMsg){
       <form id="loginForm" class="grid gap-3">
         <div><label class="field-label">البريد الإلكتروني</label><input required type="email" name="email"></div>
         <div><label class="field-label">كلمة المرور</label><input required type="password" name="password"></div>
-        <button type="submit" id="loginBtn" class="btn btn-brand py-2.5 mt-1">دخول</button>
+        <button type="submit" id="loginBtn" class="btn btn-brand py-3 mt-1 w-full">دخول</button>
       </form>
 
       <form id="signupForm" class="grid gap-3 hidden">
@@ -222,7 +255,7 @@ function renderAuthScreen(errMsg){
             <option value="reception">موظف استقبال المركز الطبي</option>
           </select>
         </div>
-        <button type="submit" id="signupBtn" class="btn btn-brand py-2.5 mt-1">إنشاء الحساب</button>
+        <button type="submit" id="signupBtn" class="btn btn-brand py-3 mt-1 w-full">إنشاء الحساب</button>
       </form>
     </div>
   </div>`;
@@ -272,14 +305,14 @@ function renderAuthScreen(errMsg){
 function renderRolePicker(){
   $('#app').innerHTML = `
   <div class="w-full min-h-screen flex items-center justify-center p-4">
-    <div class="card p-8 max-w-md w-full fade-in">
+    <div class="card p-6 md:p-8 max-w-md w-full fade-in">
       <h1 class="text-xl font-bold brandfont mb-1">أكمل الإعداد</h1>
       <p class="text-sm mb-6" style="color:var(--ink-soft)">اختر صفتك في النظام</p>
       <div class="flex flex-col gap-3">
-        <button id="pick-hr" class="btn p-4 text-right" style="border:1.5px solid var(--line);border-radius:12px;">
+        <button id="pick-hr" class="btn p-4 text-right justify-start" style="border:1.5px solid var(--line);border-radius:12px;">
           <div class="font-bold mb-1">مسؤول الموارد البشرية</div>
         </button>
-        <button id="pick-reception" class="btn p-4 text-right" style="border:1.5px solid var(--line);border-radius:12px;">
+        <button id="pick-reception" class="btn p-4 text-right justify-start" style="border:1.5px solid var(--line);border-radius:12px;">
           <div class="font-bold mb-1">موظف استقبال المركز الطبي</div>
         </button>
       </div>
@@ -308,15 +341,16 @@ function buildShell(){
   const isHR = S.role==='hr';
   const navItems = isHR ? [
     {id:'dashboard', label:'لوحة التحكم', icon:iconGrid},
-    {id:'new', label:'طلب فحص جديد', icon:iconPlus},
+    {id:'new', label:'طلب جديد', icon:iconPlus},
     {id:'log', label:'سجل الطلبات', icon:iconList},
   ] : [
-    {id:'inbox', label:'الطلبات الواردة', icon:iconInbox},
+    {id:'inbox', label:'الواردة', icon:iconInbox},
     {id:'log', label:'جميع الطلبات', icon:iconList},
   ];
 
   $('#app').innerHTML = `
-  <div class="min-h-screen flex">
+  <div class="min-h-screen flex w-full">
+    <!-- Desktop Sidebar -->
     <aside class="hidden md:flex flex-col shrink-0" style="width:236px;border-left:1px solid var(--line);background:var(--surface)">
       <div class="flex items-center gap-3 px-5 py-5">
         <div style="width:38px;height:38px;border-radius:10px;background:var(--brand);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-family:'Cairo',sans-serif">م</div>
@@ -337,53 +371,51 @@ function buildShell(){
       </div>
     </aside>
 
-    <div class="flex-1 min-w-0 flex flex-col">
-      <header class="flex items-center justify-between gap-3 px-4 md:px-7 py-3.5" style="border-bottom:1px solid var(--line);background:var(--surface)">
-        <div class="flex items-center gap-3 min-w-0">
-          <button id="mobileMenuBtn" class="md:hidden btn-ghost btn p-2">${iconMenu}</button>
+    <!-- Main Content Area -->
+    <div class="flex-1 min-w-0 flex flex-col min-h-screen">
+      <header class="flex items-center justify-between gap-3 px-4 md:px-7 py-3" style="border-bottom:1px solid var(--line);background:var(--surface)">
+        <div class="flex items-center gap-2 min-w-0">
+          <div style="width:32px;height:32px;border-radius:8px;background:var(--brand);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-family:'Cairo',sans-serif" class="md:hidden">م</div>
           <h2 id="pageTitle" class="font-bold text-base md:text-lg truncate"></h2>
         </div>
-        <div class="relative">
-          <button id="notifBtn" class="btn-ghost btn p-2 relative">${iconBell}
-            <span id="notifDot" class="hidden" style="position:absolute;top:-3px;left:-3px;background:var(--red);color:#fff;font-size:10px;font-weight:800;min-width:17px;height:17px;border-radius:999px;display:flex;align-items:center;justify-content:center;padding:0 3px;"></span>
-          </button>
-          <div id="notifPanel" class="hidden" style="position:absolute;left:0;top:calc(100% + 8px);width:340px;max-width:88vw;max-height:70vh;overflow:auto;z-index:40;"></div>
+        <div class="flex items-center gap-2">
+          <div class="relative">
+            <button id="notifBtn" class="btn-ghost btn p-2 relative">${iconBell}
+              <span id="notifDot" class="hidden" style="position:absolute;top:-3px;left:-3px;background:var(--red);color:#fff;font-size:10px;font-weight:800;min-width:17px;height:17px;border-radius:999px;display:flex;align-items:center;justify-content:center;padding:0 3px;"></span>
+            </button>
+            <div id="notifPanel" class="hidden" style="position:absolute;left:0;top:calc(100% + 8px);width:320px;max-width:88vw;max-height:70vh;overflow:auto;z-index:40;"></div>
+          </div>
+          <button id="logoutBtnMobile" class="md:hidden btn-ghost btn p-2" title="تسجيل الخروج">${iconLogout}</button>
         </div>
       </header>
-      <main id="pageBody" class="flex-1 p-4 md:p-7 min-w-0"></main>
+      <main id="pageBody" class="flex-1 p-4 md:p-7 min-w-0 mb-16 md:mb-0"></main>
     </div>
   </div>
 
-  <div id="mobileNav" class="hidden md:hidden" style="position:fixed;inset:0;z-index:60;">
-    <div class="absolute inset-0" style="background:rgba(0,0,0,.4)" id="mobileNavBackdrop"></div>
-    <div class="absolute top-0 bottom-0 right-0" style="width:78%;max-width:300px;background:var(--surface);padding:1.2rem 1rem;">
-      <div class="flex items-center gap-3 mb-4">
-        <div style="width:36px;height:36px;border-radius:10px;background:var(--brand);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-family:'Cairo',sans-serif">م</div>
-        <div class="font-bold brandfont">مسار</div>
+  <!-- Mobile Bottom Navigation -->
+  <div class="bottom-nav md:hidden">
+    ${navItems.map(n=>`
+      <div class="bottom-nav-item" data-tab="${n.id}">
+        ${n.icon}
+        <span>${n.label}</span>
       </div>
-      <nav class="flex flex-col gap-1" id="navlinksMobile">
-        ${navItems.map(n=>`<div class="navlink" data-tab="${n.id}">${n.icon}<span>${n.label}</span></div>`).join('')}
-      </nav>
-      <button id="logoutBtnMobile" class="text-xs mt-4 w-full text-center py-2" style="color:var(--ink-soft)">تسجيل الخروج</button>
-    </div>
+    `).join('')}
   </div>`;
 
-  document.querySelectorAll('[data-tab]').forEach(n=>n.onclick=()=>{ setTab(n.dataset.tab); closeMobileNav(); });
-  $('#mobileMenuBtn').onclick = ()=> $('#mobileNav').classList.remove('hidden');
-  $('#mobileNavBackdrop').onclick = closeMobileNav;
+  document.querySelectorAll('[data-tab]').forEach(n=>n.onclick=()=> setTab(n.dataset.tab));
   $('#logoutBtn').onclick = ()=>signOut(auth);
   $('#logoutBtnMobile').onclick = ()=>signOut(auth);
   $('#notifBtn').onclick = toggleNotifPanel;
   setTab(S.tab);
 }
-function closeMobileNav(){ $('#mobileNav').classList.add('hidden'); }
 
 function setTab(tab){
   S.tab = tab;
   document.querySelectorAll('[data-tab]').forEach(n=> n.classList.toggle('active', n.dataset.tab===tab));
-  const titles = { dashboard:'لوحة التحكم', new:'إنشاء طلب فحص طبي جديد', log:'سجل الطلبات', inbox:'الطلبات الواردة' };
+  const titles = { dashboard:'لوحة التحكم', new:'طلب فحص جديد', log:'سجل الطلبات', inbox:'الطلبات الواردة' };
   $('#pageTitle').textContent = titles[tab] || '';
   renderTab();
+  window.scrollTo({top: 0, behavior: 'smooth'});
 }
 
 /* ============================= DATA SUBSCRIBE ============================= */
@@ -494,12 +526,12 @@ function renderDashboard(){
   ];
   const recent = all.slice(0,8);
   body.innerHTML = `
-    <div class="grid gap-3 mb-6" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
-      ${stats.map(s=>`<div class="card p-4" style="background:${s.tint};border-color:transparent"><div class="text-xs font-bold mb-1" style="color:${s.fg}">${s.label}</div><div class="stat-num" style="color:${s.fg}">${s.val}</div></div>`).join('')}
+    <div class="grid gap-2.5 mb-6 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+      ${stats.map(s=>`<div class="card p-3.5" style="background:${s.tint};border-color:transparent"><div class="text-xs font-bold mb-1" style="color:${s.fg}">${s.label}</div><div class="stat-num" style="color:${s.fg}">${s.val}</div></div>`).join('')}
     </div>
     <div class="flex items-center justify-between mb-3">
-      <h3 class="font-bold">أحدث الطلبات</h3>
-      <button id="goNew" class="btn btn-brand px-4 py-2 text-sm">${iconPlus}<span class="mr-1">طلب جديد</span></button>
+      <h3 class="font-bold text-base">أحدث الطلبات</h3>
+      <button id="goNew" class="btn btn-brand px-3.5 py-2 text-xs md:text-sm">${iconPlus}<span>طلب جديد</span></button>
     </div>
     <div class="card overflow-hidden">${requestsTable(recent)}</div>`;
   $('#goNew').onclick = ()=>setTab('new');
@@ -510,18 +542,18 @@ function renderDashboard(){
 function renderNewRequest(){
   const body = $('#pageBody'); if(!body) return;
   body.innerHTML = `
-    <div class="max-w-2xl">
-      <div class="card p-5 md:p-7 fade-in">
+    <div class="max-w-2xl mx-auto">
+      <div class="card p-4 md:p-7 fade-in">
         <form id="reqForm" class="grid gap-4">
-          <div class="grid md:grid-cols-2 gap-4">
+          <div class="grid md:grid-cols-2 gap-3.5">
             <div><label class="field-label">اسم الموظف (عربي) *</label><input required name="employeeNameAr" placeholder="مثال: محمد أحمد العتيبي"></div>
             <div><label class="field-label">اسم الموظف (إنجليزي)</label><input name="employeeNameEn" placeholder="Mohammed A. Alotaibi"></div>
           </div>
-          <div class="grid md:grid-cols-2 gap-4">
+          <div class="grid md:grid-cols-2 gap-3.5">
             <div><label class="field-label">رقم الهوية / الإقامة *</label><input required name="idNumber" inputmode="numeric" placeholder="1XXXXXXXXX"></div>
             <div><label class="field-label">نوع الفحص الطبي</label><input name="examType" placeholder="مثال: فحص عمالة، فحص دوري"></div>
           </div>
-          <div class="grid md:grid-cols-2 gap-4">
+          <div class="grid md:grid-cols-2 gap-3.5">
             <div><label class="field-label">اسم الكفيل *</label><input required list="sponsorsList" name="sponsorName" placeholder="اسم الكفيل"><datalist id="sponsorsList"></datalist></div>
             <div><label class="field-label">اسم الشركة *</label><input required list="companiesList" name="companyName" placeholder="اسم الشركة"><datalist id="companiesList"></datalist></div>
           </div>
@@ -529,14 +561,14 @@ function renderNewRequest(){
           <div>
             <label class="field-label">صورة الموظف</label>
             <div class="flex items-center gap-3">
-              <div id="photoPreviewWrap" class="avatar flex items-center justify-center overflow-hidden" style="width:64px;height:64px"><span style="color:var(--ink-soft)" id="photoPlaceholder">${iconUser}</span></div>
-              <label class="btn btn-ghost px-3 py-2 text-sm cursor-pointer">رفع صورة<input type="file" id="photoInput" accept="image/*" class="hidden"></label>
+              <div id="photoPreviewWrap" class="avatar flex items-center justify-center overflow-hidden" style="width:56px;height:56px"><span style="color:var(--ink-soft)" id="photoPlaceholder">${iconUser}</span></div>
+              <label class="btn btn-ghost px-3 py-2 text-xs cursor-pointer">رفع صورة<input type="file" id="photoInput" accept="image/*" class="hidden"></label>
               <span id="photoStatus" class="text-xs" style="color:var(--ink-soft)"></span>
             </div>
           </div>
-          <div><label class="field-label">ملاحظات</label><textarea name="notes" rows="3" placeholder="أي معلومات إضافية"></textarea></div>
+          <div><label class="field-label">ملاحظات</label><textarea name="notes" rows="2" placeholder="أي معلومات إضافية"></textarea></div>
           <div class="flex items-center gap-3 pt-2">
-            <button type="submit" id="submitBtn" class="btn btn-brand px-6 py-2.5">حفظ وإرسال الطلب</button>
+            <button type="submit" id="submitBtn" class="btn btn-brand px-6 py-3 w-full md:w-auto">حفظ وإرسال الطلب</button>
             <span id="formMsg" class="text-xs" style="color:var(--ink-soft)"></span>
           </div>
         </form>
@@ -553,7 +585,7 @@ function renderNewRequest(){
       await uploadBytes(sRef, f);
       const url = await getDownloadURL(sRef);
       S.pendingPhotoURL = url;
-      $('#photoPreviewWrap').innerHTML = `<img src="${url}" class="avatar" style="width:64px;height:64px">`;
+      $('#photoPreviewWrap').innerHTML = `<img src="${url}" class="avatar" style="width:56px;height:56px">`;
       statusEl.textContent = 'تم رفع الصورة';
     }catch(err){ console.error(err); statusEl.textContent = 'تعذّر رفع الصورة'; toast('تعذّر رفع الصورة — تأكد من إعداد Storage','error'); }
   });
@@ -613,7 +645,7 @@ function renderInbox(){
   const body = $('#pageBody'); if(!body) return;
   const items = S.requests.filter(r=>r.status==='sent');
   body.innerHTML = items.length
-    ? `<div class="grid gap-4" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr))">${items.map(r=>requestCard(r)).join('')}</div>`
+    ? `<div class="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">${items.map(r=>requestCard(r)).join('')}</div>`
     : emptyState('لا توجد طلبات واردة حالياً', 'ستظهر هنا الطلبات فور إنشائها من الموارد البشرية.');
   wireCardEvents();
 }
@@ -621,25 +653,27 @@ function requestCard(r){
   const st = STATUS[r.status] || STATUS.sent;
   const photo = r.photoURL ? `<img src="${r.photoURL}" class="avatar">` : `<div class="avatar flex items-center justify-center" style="color:var(--ink-soft)">${iconUser}</div>`;
   return `
-  <div class="card p-4 fade-in">
-    <div class="flex items-start gap-3 mb-3">
-      ${photo}
-      <div class="min-w-0 flex-1">
-        <div class="font-bold text-sm truncate">${esc(r.employeeNameAr)}</div>
-        <div class="text-[11px]" style="color:var(--ink-soft)">${esc(r.employeeNameEn||'')}</div>
-        <div class="text-[11px] mt-0.5" style="color:var(--ink-soft)">هوية: ${esc(r.idNumber)}</div>
+  <div class="card p-4 fade-in flex flex-col justify-between">
+    <div>
+      <div class="flex items-start gap-3 mb-3">
+        ${photo}
+        <div class="min-w-0 flex-1">
+          <div class="font-bold text-sm truncate">${esc(r.employeeNameAr)}</div>
+          <div class="text-[11px]" style="color:var(--ink-soft)">${esc(r.employeeNameEn||'')}</div>
+          <div class="text-[11px] mt-0.5" style="color:var(--ink-soft)">هوية: ${esc(r.idNumber)}</div>
+        </div>
+        <span class="badge" style="background:${st.tint};color:${st.fg}">${st.label}</span>
       </div>
-      <span class="badge" style="background:${st.tint};color:${st.fg}">${st.label}</span>
+      <div class="grid grid-cols-2 gap-y-1 text-xs mb-3">
+        <div><span style="color:var(--ink-soft)">الكفيل: </span>${esc(r.sponsorName)}</div>
+        <div><span style="color:var(--ink-soft)">الشركة: </span>${esc(r.companyName)}</div>
+        <div class="col-span-2"><span style="color:var(--ink-soft)">فاتورة باسم: </span>${esc(r.billingCompany)}</div>
+        <div class="col-span-2"><span style="color:var(--ink-soft)">تاريخ الطلب: </span>${fmtDT(r.createdAt)}</div>
+      </div>
     </div>
-    <div class="grid grid-cols-2 gap-y-1.5 text-xs mb-3">
-      <div><span style="color:var(--ink-soft)">الكفيل: </span>${esc(r.sponsorName)}</div>
-      <div><span style="color:var(--ink-soft)">الشركة: </span>${esc(r.companyName)}</div>
-      <div class="col-span-2"><span style="color:var(--ink-soft)">فاتورة باسم: </span>${esc(r.billingCompany)}</div>
-      <div class="col-span-2"><span style="color:var(--ink-soft)">تاريخ الطلب: </span>${fmtDT(r.createdAt)}</div>
-    </div>
-    <div class="flex flex-wrap gap-2">
-      <button class="btn btn-brand px-3 py-1.5 text-xs flex-1" data-action="accept" data-id="${r.id}">قبول الطلب</button>
-      <button class="btn btn-danger px-3 py-1.5 text-xs flex-1" data-action="reject" data-id="${r.id}">رفض الطلب</button>
+    <div class="flex gap-2 pt-2" style="border-top:1px solid var(--line)">
+      <button class="btn btn-brand py-2 text-xs flex-1" data-action="accept" data-id="${r.id}">قبول الطلب</button>
+      <button class="btn btn-danger py-2 text-xs flex-1" data-action="reject" data-id="${r.id}">رفض الطلب</button>
     </div>
   </div>`;
 }
@@ -677,8 +711,8 @@ function openRejectModal(id){
       <label class="field-label">سبب الرفض *</label>
       <textarea id="rejectReason" rows="3" placeholder="اكتب سبب الرفض هنا"></textarea>
       <div class="flex gap-2 mt-4">
-        <button id="rejectConfirm" class="btn btn-danger px-4 py-2 text-sm flex-1">تأكيد الرفض</button>
-        <button id="rejectCancel" class="btn btn-ghost px-4 py-2 text-sm">إلغاء</button>
+        <button id="rejectConfirm" class="btn btn-danger px-4 py-2.5 text-sm flex-1">تأكيد الرفض</button>
+        <button id="rejectCancel" class="btn btn-ghost px-4 py-2.5 text-sm">إلغاء</button>
       </div>
     </div>`;
   document.body.appendChild(wrap);
@@ -704,7 +738,7 @@ function renderLog(){
   const sponsors = Array.from(new Set(S.requests.map(r=>r.sponsorName).filter(Boolean))).sort();
   body.innerHTML = `
     <div class="card p-4 mb-4">
-      <div class="grid gap-3" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+      <div class="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         <div><label class="field-label">بحث</label><input id="fq" placeholder="اسم، هوية، رقم طلب" value="${esc(S.filters.q)}"></div>
         <div><label class="field-label">الحالة</label><select id="fstatus"><option value="">الكل</option>${Object.entries(STATUS).map(([k,v])=>`<option value="${k}" ${S.filters.status===k?'selected':''}>${v.label}</option>`).join('')}</select></div>
         <div><label class="field-label">الشركة</label><select id="fcompany"><option value="">الكل</option>${companies.map(c=>`<option ${S.filters.company===c?'selected':''}>${esc(c)}</option>`).join('')}</select></div>
@@ -713,7 +747,7 @@ function renderLog(){
         <div><label class="field-label">إلى تاريخ</label><input type="date" id="fto" value="${S.filters.to}"></div>
       </div>
     </div>
-    <div class="card overflow-hidden" id="logTableWrap"></div>`;
+    <div id="logTableWrap"></div>`;
   const apply = ()=>{
     S.filters = { q: $('#fq').value.trim(), status: $('#fstatus').value, company: $('#fcompany').value, sponsor: $('#fsponsor').value, from: $('#ffrom').value, to: $('#fto').value };
     renderLogTable();
@@ -731,28 +765,52 @@ function renderLogTable(){
   if(f.sponsor) items = items.filter(r=>r.sponsorName===f.sponsor);
   if(f.from) items = items.filter(r=> r.createdAt && r.createdAt.slice(0,10) >= f.from);
   if(f.to) items = items.filter(r=> r.createdAt && r.createdAt.slice(0,10) <= f.to);
+  
   wrap.innerHTML = requestsTable(items);
   wireRequestTableEvents();
 }
+
+/* Responsive Table & Cards for Mobile */
 function requestsTable(items){
   if(!items.length) return emptyState('لا توجد طلبات مطابقة', 'جرّب تعديل عوامل البحث أعلاه.');
+  
   return `
-  <div class="scrollx"><table>
-    <thead><tr><th>رقم الطلب</th><th>الموظف</th><th>الهوية</th><th>الكفيل</th><th>الشركة</th><th>الحالة</th><th>تاريخ الطلب</th><th></th></tr></thead>
-    <tbody>
-      ${items.map(r=>{ const st = STATUS[r.status]||STATUS.sent; return `<tr>
-        <td class="font-bold">${esc(r.requestNumber)}</td><td>${esc(r.employeeNameAr)}</td><td>${esc(r.idNumber)}</td>
-        <td>${esc(r.sponsorName)}</td><td>${esc(r.companyName)}</td>
-        <td><span class="badge" style="background:${st.tint};color:${st.fg}">${st.label}</span></td>
-        <td style="color:var(--ink-soft)">${fmtD(r.createdAt)}</td>
-        <td><button class="btn btn-ghost px-2.5 py-1 text-xs" data-openreq="${r.id}">تفاصيل</button></td></tr>`; }).join('')}
-    </tbody>
-  </table></div>`;
+  <!-- Laptop/Desktop Table View -->
+  <div class="hidden md:block card overflow-hidden">
+    <div class="scrollx"><table>
+      <thead><tr><th>رقم الطلب</th><th>الموظف</th><th>الهوية</th><th>الكفيل</th><th>الشركة</th><th>الحالة</th><th>تاريخ الطلب</th><th></th></tr></thead>
+      <tbody>
+        ${items.map(r=>{ const st = STATUS[r.status]||STATUS.sent; return `<tr>
+          <td class="font-bold">${esc(r.requestNumber)}</td><td>${esc(r.employeeNameAr)}</td><td>${esc(r.idNumber)}</td>
+          <td>${esc(r.sponsorName)}</td><td>${esc(r.companyName)}</td>
+          <td><span class="badge" style="background:${st.tint};color:${st.fg}">${st.label}</span></td>
+          <td style="color:var(--ink-soft)">${fmtD(r.createdAt)}</td>
+          <td><button class="btn btn-ghost px-2.5 py-1 text-xs" data-openreq="${r.id}">تفاصيل</button></td></tr>`; }).join('')}
+      </tbody>
+    </table></div>
+  </div>
+
+  <!-- Mobile Card List View -->
+  <div class="md:hidden flex flex-col gap-3">
+    ${items.map(r=>{ const st = STATUS[r.status]||STATUS.sent; return `
+      <div class="card p-3.5 fade-in flex items-center justify-between gap-2">
+        <div class="min-w-0">
+          <div class="flex items-center gap-2 mb-1">
+            <span class="font-bold text-xs">${esc(r.requestNumber)}</span>
+            <span class="badge text-[10px] py-0.5 px-2" style="background:${st.tint};color:${st.fg}">${st.label}</span>
+          </div>
+          <div class="font-bold text-sm truncate">${esc(r.employeeNameAr)}</div>
+          <div class="text-[11px]" style="color:var(--ink-soft)">هوية: ${esc(r.idNumber)} \vert{}${esc(r.companyName)}</div>
+        </div>
+        <button class="btn btn-ghost px-3 py-1.5 text-xs shrink-0" data-openreq="${r.id}">تفاصيل</button>
+      </div>`; }).join('')}
+  </div>`;
 }
+
 function wireRequestTableEvents(){ document.querySelectorAll('[data-openreq]').forEach(b=>b.onclick=()=>openDetailModal(b.dataset.openreq)); }
 function emptyState(title, sub){
-  return `<div class="text-center py-14 px-4">
-    <div class="mx-auto mb-3" style="width:52px;height:52px;border-radius:14px;background:var(--surface-2);display:flex;align-items:center;justify-content:center;color:var(--ink-soft)">${iconInbox}</div>
+  return `<div class="text-center py-12 px-4 card">
+    <div class="mx-auto mb-3" style="width:48px;height:48px;border-radius:12px;background:var(--surface-2);display:flex;align-items:center;justify-content:center;color:var(--ink-soft)">${iconInbox}</div>
     <div class="font-bold text-sm mb-1">${esc(title)}</div><div class="text-xs" style="color:var(--ink-soft)">${esc(sub)}</div></div>`;
 }
 
@@ -761,31 +819,31 @@ function openDetailModal(id){
   const r = S.requests.find(x=>x.id===id); if(!r) return;
   const st = STATUS[r.status]||STATUS.sent;
   const wrap = el('div','modal-backdrop');
-  const photo = r.photoURL ? `<img src="${r.photoURL}" class="avatar" style="width:64px;height:64px">` : `<div class="avatar flex items-center justify-center" style="width:64px;height:64px;color:var(--ink-soft)">${iconUser}</div>`;
+  const photo = r.photoURL ? `<img src="${r.photoURL}" class="avatar" style="width:56px;height:56px">` : `<div class="avatar flex items-center justify-center" style="width:56px;height:56px;color:var(--ink-soft)">${iconUser}</div>`;
 
   let actionsHTML = '';
   if(S.role==='reception'){
-    if(r.status==='sent') actionsHTML = `<button class="btn btn-brand px-4 py-2 text-sm" data-action="accept" data-id="${r.id}">قبول الطلب</button><button class="btn btn-danger px-4 py-2 text-sm" data-action="reject" data-id="${r.id}">رفض الطلب</button>`;
-    else if(r.status==='accepted') actionsHTML = `<button class="btn btn-brand px-4 py-2 text-sm" data-action="checkin" data-id="${r.id}">تسجيل حضور الموظف</button>`;
-    else if(r.status==='attended') actionsHTML = `<button class="btn btn-brand px-4 py-2 text-sm" data-action="examine" data-id="${r.id}">تم الفحص</button>`;
-    else if(r.status==='examined') actionsHTML = `<button class="btn btn-brand px-4 py-2 text-sm" data-action="complete" data-id="${r.id}">إكمال الطلب</button>`;
+    if(r.status==='sent') actionsHTML = `<button class="btn btn-brand px-4 py-2.5 text-xs md:text-sm flex-1" data-action="accept" data-id="${r.id}">قبول الطلب</button><button class="btn btn-danger px-4 py-2.5 text-xs md:text-sm flex-1" data-action="reject" data-id="${r.id}">رفض الطلب</button>`;
+    else if(r.status==='accepted') actionsHTML = `<button class="btn btn-brand px-4 py-2.5 text-xs md:text-sm flex-1" data-action="checkin" data-id="${r.id}">تسجيل حضور الموظف</button>`;
+    else if(r.status==='attended') actionsHTML = `<button class="btn btn-brand px-4 py-2.5 text-xs md:text-sm flex-1" data-action="examine" data-id="${r.id}">تم الفحص</button>`;
+    else if(r.status==='examined') actionsHTML = `<button class="btn btn-brand px-4 py-2.5 text-xs md:text-sm flex-1" data-action="complete" data-id="${r.id}">إكمال الطلب</button>`;
   }
 
   wrap.innerHTML = `
-    <div class="card p-5 w-full max-w-lg fade-in" style="max-height:88vh;overflow:auto">
+    <div class="card p-5 w-full max-w-lg fade-in" style="max-height:90vh;overflow:auto">
       <div class="flex items-start justify-between gap-3 mb-4">
         <div class="flex items-center gap-3">${photo}<div><div class="font-bold">${esc(r.employeeNameAr)}</div><div class="text-xs" style="color:var(--ink-soft)">${esc(r.employeeNameEn||'')}</div></div></div>
         <span class="badge" style="background:${st.tint};color:${st.fg}">${st.label}</span>
       </div>
-      <div class="grid grid-cols-2 gap-y-2 text-sm mb-3">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-y-2 text-sm mb-3">
         <div><span style="color:var(--ink-soft)">رقم الطلب: </span><b>${esc(r.requestNumber)}</b></div>
         <div><span style="color:var(--ink-soft)">الهوية: </span>${esc(r.idNumber)}</div>
         <div><span style="color:var(--ink-soft)">الكفيل: </span>${esc(r.sponsorName)}</div>
         <div><span style="color:var(--ink-soft)">الشركة: </span>${esc(r.companyName)}</div>
-        <div class="col-span-2"><span style="color:var(--ink-soft)">فاتورة باسم: </span>${esc(r.billingCompany)}</div>
-        <div class="col-span-2"><span style="color:var(--ink-soft)">نوع الفحص: </span>${esc(r.examType||'—')}</div>
-        ${r.notes? `<div class="col-span-2"><span style="color:var(--ink-soft)">ملاحظات: </span>${esc(r.notes)}</div>`:''}
-        ${r.status==='rejected' && r.rejectionReason ? `<div class="col-span-2 p-2 rounded-lg" style="background:var(--red-tint);color:var(--red)"><b>سبب الرفض:</b> ${esc(r.rejectionReason)}</div>` : ''}
+        <div class="sm:col-span-2"><span style="color:var(--ink-soft)">فاتورة باسم: </span>${esc(r.billingCompany)}</div>
+        <div class="sm:col-span-2"><span style="color:var(--ink-soft)">نوع الفحص: </span>${esc(r.examType||'—')}</div>
+        ${r.notes? `<div class="sm:col-span-2"><span style="color:var(--ink-soft)">ملاحظات: </span>${esc(r.notes)}</div>`:''}
+        ${r.status==='rejected' && r.rejectionReason ? `<div class="sm:col-span-2 p-2.5 rounded-lg" style="background:var(--red-tint);color:var(--red)"><b>سبب الرفض:</b> ${esc(r.rejectionReason)}</div>` : ''}
       </div>
       <div class="text-xs mb-4" style="color:var(--ink-soft)">
         <div>تاريخ الطلب: ${fmtDT(r.createdAt)} — بواسطة ${esc(r.createdByName||'—')}</div>
@@ -795,8 +853,8 @@ function openDetailModal(id){
         ${r.completedAt? `<div>تاريخ الإكمال: ${fmtDT(r.completedAt)}</div>`:''}
         ${r.rejectedAt? `<div>تاريخ الرفض: ${fmtDT(r.rejectedAt)} — بواسطة ${esc(r.rejectedByName||'—')}</div>`:''}
       </div>
-      ${actionsHTML? `<div class="flex flex-wrap gap-2 pt-2" style="border-top:1px solid var(--line)">${actionsHTML}</div>`:''}
-      <button id="closeModalBtn" class="btn btn-ghost px-4 py-2 text-sm mt-4 w-full">إغلاق</button>
+      ${actionsHTML? `<div class="flex flex-wrap gap-2 pt-3 mb-2" style="border-top:1px solid var(--line)">${actionsHTML}</div>`:''}
+      <button id="closeModalBtn" class="btn btn-ghost px-4 py-2.5 text-sm w-full mt-2">إغلاق</button>
     </div>`;
   document.body.appendChild(wrap);
   wrap.onclick = (e)=>{ if(e.target===wrap) wrap.remove(); };
@@ -809,13 +867,13 @@ function openDetailModal(id){
 }
 
 /* ============================= ICONS ============================= */
-const iconGrid = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>`;
-const iconPlus = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>`;
-const iconList = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>`;
-const iconInbox = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"/></svg>`;
-const iconBell = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>`;
-const iconMenu = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>`;
+const iconGrid = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>`;
+const iconPlus = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>`;
+const iconList = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>`;
+const iconInbox = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"/></svg>`;
+const iconBell = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>`;
 const iconUser = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>`;
+const iconLogout = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>`;
 </script>
 </body>
 </html>
