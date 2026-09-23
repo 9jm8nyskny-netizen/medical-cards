@@ -60,7 +60,7 @@
   .badge{display:inline-flex; align-items:center; gap:.35rem; padding:.28rem .7rem; border-radius:999px; font-size:.78rem; font-weight:700; white-space:nowrap;}
   .navlink{display:flex; align-items:center; gap:.65rem; padding:.7rem .9rem; border-radius:10px; color:var(--ink-soft); font-weight:700; font-size:.9rem; cursor:pointer; min-height:44px;}
   .navlink:hover{background:var(--surface-2); color:var(--ink);}
-  .navlink.active{background:var(--brand-tint); color:var(--brand-dark);}
+  .navlink.active{background:var(--brand); color:#fff; box-shadow:0 6px 16px -6px color-mix(in srgb, var(--brand) 70%, transparent);}
   .scrollx{overflow-x:auto; -webkit-overflow-scrolling:touch;}
   table{border-collapse:collapse; width:100%;}
   th{font-size:.76rem; color:var(--ink-soft); font-weight:700; text-align:right; padding:.6rem .8rem; border-bottom:1px solid var(--line); white-space:nowrap;}
@@ -94,6 +94,52 @@
   @media (min-width:640px){ .cards-grid{ grid-template-columns:repeat(2,1fr); } }
   @media (min-width:1280px){ .cards-grid{ grid-template-columns:repeat(3,1fr); } }
   .err-box{background:var(--red-tint); color:var(--red); border-radius:10px; padding:.6rem .8rem; font-size:.8rem; display:flex; align-items:center; gap:.5rem;}
+
+  /* ===================== App shell — dedicated professional dark theme =====================
+     Applied post-login regardless of OS light/dark setting, so the dashboard always looks like
+     the branded product rather than following the visitor's system preference. Because every
+     existing rule already reads colors from CSS custom properties (var(--bg), var(--surface)…),
+     redefining those properties on .app-shell cascades to every component underneath for free. */
+  #app .app-shell{
+    --ink:#F3F8F6; --ink-soft:#96AAA2; --line:#223530;
+    --bg:#0A1310; --surface:#152119; --surface-2:#1C2B23;
+    --brand:#18B989; --brand-dark:#0F9B72; --brand-tint:#163C2E;
+    --amber:#E3A93F; --amber-tint:#2E2712;
+    --blue:#4E93E8; --blue-tint:#16273A;
+    --violet:#9E86F2; --violet-tint:#251E3A;
+    --green:#3FCB84; --green-tint:#132A1D;
+    --red:#F0685C; --red-tint:#331917;
+    background:var(--bg); color:var(--ink); min-height:100vh;
+  }
+  .app-logo-text{
+    font-family:'Cairo',sans-serif; font-weight:800; font-size:1.35rem;
+    background:linear-gradient(90deg,#3FE0AE,#E8C468); -webkit-background-clip:text; background-clip:text;
+    color:transparent; line-height:1.1;
+  }
+  .app-sidebar{
+    margin:14px; border-radius:20px; background:var(--surface); border:1px solid var(--line);
+    box-shadow:0 18px 40px -22px rgba(0,0,0,.55);
+  }
+  .stat-tile{
+    border-radius:16px; padding:1rem 1.1rem; color:#fff; position:relative; overflow:hidden;
+    box-shadow:0 14px 28px -16px rgba(0,0,0,.45);
+  }
+  .stat-tile .stat-icon{
+    width:32px; height:32px; border-radius:9px; background:rgba(255,255,255,.18);
+    display:flex; align-items:center; justify-content:center; margin-bottom:.7rem;
+  }
+  .stat-tile .stat-label{font-size:.76rem; font-weight:700; opacity:.92; margin-bottom:.15rem;}
+  .stat-tile .stat-num{font-family:'Cairo',sans-serif; font-weight:800; font-size:1.7rem;}
+  .online-dot{
+    position:absolute; inset-inline-end:-1px; bottom:-1px; width:11px; height:11px; border-radius:50%;
+    background:var(--green); border:2px solid var(--surface);
+  }
+  .pill-btn{
+    display:flex; align-items:center; justify-content:center; gap:.4rem; width:100%;
+    background:var(--surface-2); color:var(--ink-soft); border:1px solid var(--line);
+    border-radius:999px; padding:.55rem .8rem; font-size:.78rem; font-weight:700; cursor:pointer;
+  }
+  .pill-btn:hover{background:var(--line); color:var(--ink);}
 
   /* ===================== Auth screen ===================== */
   .auth-page{
@@ -476,35 +522,38 @@ function buildShell(){
   ];
 
   $('#app').innerHTML = `
-  <div class="min-h-screen flex">
-    <aside class="hidden md:flex flex-col shrink-0" style="width:236px;border-left:1px solid var(--line);background:var(--surface)">
-      <div class="flex items-center gap-3 px-5 py-5">
-        <div style="width:38px;height:38px;border-radius:10px;background:var(--brand);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-family:'Cairo',sans-serif">م</div>
-        <div><div class="font-bold brandfont leading-none">مسار</div><div class="text-[11px]" style="color:var(--ink-soft)">إدارة الفحوصات الطبية</div></div>
+  <div class="min-h-screen flex app-shell">
+    <aside class="app-sidebar hidden md:flex flex-col shrink-0" style="width:250px;">
+      <div class="flex items-center gap-3 px-4 py-5">
+        <div class="auth-logo" style="width:38px;height:38px;border-radius:10px;font-size:.95rem;">م</div>
+        <div class="app-logo-text">مسار</div>
       </div>
-      <nav class="flex flex-col gap-1 px-3 mt-2">
+      <nav class="flex flex-col gap-1 px-3 mt-1">
         ${navItems.map(n=>`<div class="navlink" data-tab="${n.id}">${n.icon}<span>${n.label}</span></div>`).join('')}
       </nav>
-      <div class="mt-auto px-3 pb-5">
-        <div class="rounded-xl p-3 flex items-center gap-2" style="background:var(--surface-2)">
-          <div class="avatar flex items-center justify-center font-bold" style="color:var(--brand)">${esc((S.me.name||'؟').slice(0,1))}</div>
+      <div class="mt-auto px-3 pb-4">
+        <div class="rounded-xl p-3 flex items-center gap-2 mb-3" style="background:var(--surface-2)">
+          <div class="relative shrink-0">
+            <div class="avatar flex items-center justify-center font-bold" style="color:var(--brand)">${esc((S.me.name||'؟').slice(0,1))}</div>
+            <span class="online-dot"></span>
+          </div>
           <div class="min-w-0">
             <div class="text-xs font-bold truncate">${esc(S.me.name||'مستخدم')}</div>
             <div class="text-[11px]" style="color:var(--ink-soft)">${esc(ROLE_LABEL[S.role])}</div>
           </div>
         </div>
-        <button id="logoutBtn" class="text-[11px] mt-2 w-full text-center py-1.5" style="color:var(--ink-soft)">تسجيل الخروج</button>
+        <button id="logoutBtn" class="pill-btn">${iconXCirc}<span>تسجيل الخروج</span></button>
       </div>
     </aside>
 
     <div class="flex-1 min-w-0 flex flex-col">
-      <header class="flex items-center justify-between gap-3 px-4 md:px-7 py-3.5" style="border-bottom:1px solid var(--line);background:var(--surface)">
+      <header class="flex items-center justify-between gap-3 px-4 md:px-7 py-4">
         <div class="flex items-center gap-3 min-w-0">
           <button id="mobileMenuBtn" class="md:hidden btn-ghost btn p-2">${iconMenu}</button>
-          <h2 id="pageTitle" class="font-bold text-base md:text-lg truncate"></h2>
+          <h2 id="pageTitle" class="font-bold text-lg md:text-xl brandfont truncate"></h2>
         </div>
         <div class="relative">
-          <button id="notifBtn" class="btn-ghost btn p-2 relative">${iconBell}
+          <button id="notifBtn" class="btn-ghost btn p-2 relative" style="border-radius:11px;">${iconBell}
             <span id="notifDot" class="hidden" style="position:absolute;top:-3px;left:-3px;background:var(--red);color:#fff;font-size:10px;font-weight:800;min-width:17px;height:17px;border-radius:999px;display:flex;align-items:center;justify-content:center;padding:0 3px;"></span>
           </button>
           <div id="notifPanel" class="hidden" style="position:absolute;left:0;top:calc(100% + 8px);width:340px;max-width:88vw;max-height:70vh;overflow:auto;z-index:40;"></div>
@@ -512,20 +561,20 @@ function buildShell(){
       </header>
       <main id="pageBody" class="flex-1 p-4 md:p-7 min-w-0"></main>
     </div>
-  </div>
 
   <div id="mobileNav" class="hidden md:hidden" style="position:fixed;inset:0;z-index:60;">
-    <div class="absolute inset-0" style="background:rgba(0,0,0,.4)" id="mobileNavBackdrop"></div>
+    <div class="absolute inset-0" style="background:rgba(0,0,0,.5)" id="mobileNavBackdrop"></div>
     <div class="absolute top-0 bottom-0 right-0" style="width:78%;max-width:300px;background:var(--surface);padding:1.2rem 1rem;">
       <div class="flex items-center gap-3 mb-4">
-        <div style="width:36px;height:36px;border-radius:10px;background:var(--brand);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-family:'Cairo',sans-serif">م</div>
-        <div class="font-bold brandfont">مسار</div>
+        <div class="auth-logo" style="width:36px;height:36px;border-radius:10px;font-size:.9rem;">م</div>
+        <div class="app-logo-text" style="font-size:1.15rem;">مسار</div>
       </div>
       <nav class="flex flex-col gap-1" id="navlinksMobile">
         ${navItems.map(n=>`<div class="navlink" data-tab="${n.id}">${n.icon}<span>${n.label}</span></div>`).join('')}
       </nav>
-      <button id="logoutBtnMobile" class="text-xs mt-4 w-full text-center py-2" style="color:var(--ink-soft)">تسجيل الخروج</button>
+      <button id="logoutBtnMobile" class="pill-btn mt-4">${iconXCirc}<span>تسجيل الخروج</span></button>
     </div>
+  </div>
   </div>`;
 
   document.querySelectorAll('[data-tab]').forEach(n=>n.onclick=()=>{ setTab(n.dataset.tab); closeMobileNav(); });
@@ -691,21 +740,25 @@ function renderDashboard(){
   const all = S.requests;
   const count = st => all.filter(r=>r.status===st).length;
   const stats = [
-    { label:'إجمالي الطلبات', val: all.length, tint:'var(--surface-2)', fg:'var(--ink)'},
-    { label:'قيد المراجعة', val: count('sent')+count('new'), tint:'var(--blue-tint)', fg:'var(--blue)'},
-    { label:'مقبولة', val: count('accepted'), tint:'var(--brand-tint)', fg:'var(--brand)'},
-    { label:'حضر أصحابها', val: count('attended')+count('examined'), tint:'var(--violet-tint)', fg:'var(--violet)'},
-    { label:'مكتملة', val: count('completed'), tint:'var(--green-tint)', fg:'var(--green)'},
-    { label:'مرفوضة', val: count('rejected'), tint:'var(--red-tint)', fg:'var(--red)'},
+    { label:'مرفوضة', val: count('rejected'), color:'var(--red)', icon:iconXCirc },
+    { label:'مكتملة', val: count('completed'), color:'var(--green)', icon:iconCheck },
+    { label:'حضر أصحابها', val: count('attended')+count('examined'), color:'var(--violet)', icon:iconUsers },
+    { label:'مقبولة', val: count('accepted'), color:'var(--brand)', icon:iconUserCheck },
+    { label:'قيد المراجعة', val: count('sent')+count('new'), color:'var(--blue)', icon:iconClock },
+    { label:'إجمالي الطلبات', val: all.length, color:'var(--brand-dark)', icon:iconGrid },
   ];
   const recent = all.slice(0,8);
   body.innerHTML = `
-    <div class="grid stat-grid mb-6">
-      ${stats.map(s=>`<div class="card p-4" style="background:${s.tint};border-color:transparent"><div class="text-xs font-bold mb-1" style="color:${s.fg}">${s.label}</div><div class="stat-num" style="color:${s.fg}">${s.val}</div></div>`).join('')}
+    <div class="grid stat-grid mb-6 mt-1">
+      ${stats.map(s=>`<div class="stat-tile" style="background:${s.color}">
+        <div class="stat-icon">${s.icon}</div>
+        <div class="stat-label">${s.label}</div>
+        <div class="stat-num">${s.val}</div>
+      </div>`).join('')}
     </div>
     <div class="flex items-center justify-between mb-3">
-      <h3 class="font-bold">أحدث الطلبات</h3>
-      <button id="goNew" class="btn btn-brand px-4 py-2 text-sm">${iconPlus}<span class="mr-1">طلب جديد</span></button>
+      <button id="goNew" class="btn btn-brand px-4 py-2.5 text-sm" style="border-radius:12px;">${iconPlus}<span class="mr-1">طلب جديد</span></button>
+      <h3 class="font-bold brandfont">أحدث الطلبات</h3>
     </div>
     <div class="card overflow-hidden">${requestsTable(recent)}</div>`;
   $('#goNew').onclick = ()=>setTab('new');
@@ -1253,6 +1306,10 @@ const iconShield = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" 
 const iconInfo = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8h.01"/></svg>`;
 const iconAlert = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.6 1.8 18a1.6 1.6 0 0 0 1.4 2.4h17.6a1.6 1.6 0 0 0 1.4-2.4L13.7 3.6a1.6 1.6 0 0 0-2.8 0Z"/><path d="M12 9v4"/><path d="M12 16.5h.01"/></svg>`;
 const iconWhatsApp = `<svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M17.47 14.38c-.29-.15-1.7-.84-1.96-.93-.26-.1-.46-.15-.65.15-.2.29-.75.93-.92 1.12-.17.2-.34.22-.63.08-.29-.15-1.22-.45-2.33-1.44-.86-.77-1.44-1.71-1.61-2-.17-.29-.02-.45.13-.6.13-.13.29-.34.44-.51.15-.17.2-.29.29-.48.1-.2.05-.37-.02-.51-.08-.15-.65-1.58-.9-2.16-.24-.58-.48-.5-.65-.5-.17 0-.37-.02-.56-.02-.2 0-.51.07-.78.37-.26.29-1.02 1-1.02 2.44s1.05 2.83 1.19 3.03c.15.2 2.07 3.17 5.03 4.44.7.3 1.25.48 1.68.62.7.22 1.34.19 1.85.11.56-.08 1.7-.7 1.95-1.36.24-.68.24-1.26.17-1.37-.07-.13-.26-.2-.55-.35Z"/><path d="M12.02 2C6.5 2 2 6.48 2 12c0 1.85.5 3.58 1.38 5.07L2 22l5.08-1.33A9.96 9.96 0 0 0 12.02 22C17.53 22 22 17.52 22 12S17.53 2 12.02 2Zm0 18.2c-1.66 0-3.2-.46-4.52-1.25l-.32-.19-3.02.79.81-2.94-.21-.31A8.18 8.18 0 0 1 3.8 12c0-4.54 3.7-8.2 8.22-8.2 4.53 0 8.2 3.66 8.2 8.2 0 4.53-3.67 8.2-8.2 8.2Z"/></svg>`;
+const iconCheck = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>`;
+const iconXCirc = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m9.5 9.5 5 5m0-5-5 5"/></svg>`;
+const iconClock = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>`;
+const iconUserCheck = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2.5 21c0-4 3-6 6.5-6"/><path d="m15.5 14.5 2 2 3.5-3.5"/></svg>`;
 const iconUser = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>`;
 const iconUsers = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`;
 const iconEdit = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4Z"/></svg>`;
