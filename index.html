@@ -239,7 +239,8 @@ function clearSession(){ try{ localStorage.removeItem(SESSION_KEY); }catch(e){} 
 function isSessionExpired(){
   let last = 0;
   try{ last = Number(localStorage.getItem(SESSION_KEY) || 0); }catch(e){}
-  if(!last) return true;
+  // لا يوجد سجل نشاط سابق = جلسة دخول جديدة فعلاً (وليست جلسة قديمة عائدة) -> غير منتهية
+  if(!last) return false;
   return (Date.now() - last) > SESSION_MAX_AGE_MS;
 }
 function onUserActivity(){ if(auth.currentUser) touchSession(); }
@@ -319,6 +320,7 @@ function renderAuthScreen(errMsg){
     const btn = $('#loginBtn'); btn.disabled = true; btn.textContent = 'جارِ الدخول…';
     try{
       await signInWithEmailAndPassword(auth, fd.get('email'), fd.get('password'));
+      touchSession();
     }catch(err){
       console.error(err);
       $('#errSlot').innerHTML = `<div class="err-box">${esc(arError(err.code))}</div>`;
