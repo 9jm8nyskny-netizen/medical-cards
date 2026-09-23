@@ -271,7 +271,8 @@
 import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import {
   getAuth, onAuthStateChanged, createUserWithEmailAndPassword,
-  signInWithEmailAndPassword, signOut, updateProfile
+  signInWithEmailAndPassword, signOut, updateProfile,
+  setPersistence, browserSessionPersistence
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 import {
   getFirestore, collection, doc, addDoc, setDoc, updateDoc, getDoc,
@@ -290,6 +291,10 @@ const firebaseConfig = {
 const fbApp = initializeApp(firebaseConfig);
 const auth = getAuth(fbApp);
 const db = getFirestore(fbApp);
+// كل تبويب/نافذة يحتفظ بجلسته الخاصة (sessionStorage) بدل مشاركة نفس الجلسة
+// بين كل تبويبات المتصفح (وهو سلوك Firebase الافتراضي عبر localStorage).
+// بهذا تقدر تفتح حسابين مختلفين في تبويبين مختلفين من نفس المتصفح.
+setPersistence(auth, browserSessionPersistence).catch(()=>{});
 
 /* ============================= CONFIG ============================= */
 const STATUS = {
