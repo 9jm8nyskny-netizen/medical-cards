@@ -301,7 +301,7 @@ const STATUS = {
   examined:  { label: 'تم الفحص',                tint:'var(--green-tint)', fg:'var(--green)' },
   completed: { label: 'مكتمل',                   tint:'var(--teal-solid)', fg:'#fff'         },
 };
-const ROLE_LABEL = { hr: 'مسؤول الموارد البشرية', reception: 'استقبال المركز الطبي' };
+const ROLE_LABEL = { hr: 'مسؤول الموارد البشرية', reception: 'استقبال المركز الطبي', sales: 'موظف المبيعات' };
 
 /* ============================= STATE ============================= */
 const S = {
@@ -503,7 +503,7 @@ function renderNoProfileScreen(){
 function clearSubs(){ S.unsubs.forEach(u=>{ try{u();}catch(e){} }); S.unsubs = []; }
 
 function startApp(){
-  S.tab = S.role==='hr' ? 'dashboard' : 'inbox';
+  S.tab = S.role==='reception' ? 'inbox' : 'dashboard';
   buildShell();
   subscribeAll();
   startSessionWatch();
@@ -511,11 +511,15 @@ function startApp(){
 
 function buildShell(){
   const isHR = S.role==='hr';
+  const isSales = S.role==='sales';
   const navItems = isHR ? [
     {id:'dashboard', label:'لوحة التحكم', icon:iconGrid},
     {id:'new', label:'طلب فحص جديد', icon:iconPlus},
     {id:'log', label:'سجل الطلبات', icon:iconList},
     {id:'users', label:'إدارة المستخدمين', icon:iconUsers},
+  ] : isSales ? [
+    {id:'dashboard', label:'لوحة التحكم', icon:iconGrid},
+    {id:'log', label:'سجل الطلبات', icon:iconList},
   ] : [
     {id:'inbox', label:'الطلبات الواردة', icon:iconInbox},
     {id:'log', label:'جميع الطلبات', icon:iconList},
@@ -727,6 +731,8 @@ async function notify({toRole, toUserId, requestId, requestNumber, message}){
 /* ============================= RENDER: TAB ROUTER ============================= */
 function renderTab(){
   if(!S.tab) return;
+  if(S.tab==='new' && S.role!=='hr'){ S.tab='dashboard'; }
+  if(S.tab==='users' && S.role!=='hr'){ S.tab='dashboard'; }
   if(S.tab==='dashboard') return renderDashboard();
   if(S.tab==='new') return renderNewRequest();
   if(S.tab==='log') return renderLog();
@@ -757,11 +763,11 @@ function renderDashboard(){
       </div>`).join('')}
     </div>
     <div class="flex items-center justify-between mb-3">
-      <button id="goNew" class="btn btn-brand px-4 py-2.5 text-sm" style="border-radius:12px;">${iconPlus}<span class="mr-1">طلب جديد</span></button>
+      ${S.role==='hr' ? `<button id="goNew" class="btn btn-brand px-4 py-2.5 text-sm" style="border-radius:12px;">${iconPlus}<span class="mr-1">طلب جديد</span></button>` : `<span></span>`}
       <h3 class="font-bold brandfont">أحدث الطلبات</h3>
     </div>
     <div class="card overflow-hidden">${requestsTable(recent)}</div>`;
-  $('#goNew').onclick = ()=>setTab('new');
+  if(S.role==='hr') $('#goNew').onclick = ()=>setTab('new');
   wireRequestTableEvents();
 }
 
@@ -987,6 +993,7 @@ function renderUsersAdmin(){
             <label class="field-label">الصفة *</label>
             <select name="role">
               <option value="reception">موظف استقبال المركز الطبي</option>
+              <option value="sales">موظف المبيعات</option>
               <option value="hr">مسؤول الموارد البشرية</option>
             </select>
           </div>
@@ -1005,7 +1012,7 @@ function renderUsersAdmin(){
             ${S.users.length ? S.users.map(u=>`<tr>
               <td class="font-bold">${esc(u.name||'—')}</td>
               <td class="truncate" style="max-width:160px;color:var(--ink-soft)">${esc(u.email||'—')}</td>
-              <td><span class="badge" style="background:${u.role==='hr'?'var(--brand-tint)':'var(--blue-tint)'};color:${u.role==='hr'?'var(--brand)':'var(--blue)'}">${esc(ROLE_LABEL[u.role]||u.role||'—')}</span></td>
+              <td><span class="badge" style="background:${u.role==='hr'?'var(--brand-tint)':u.role==='sales'?'var(--violet-tint)':'var(--blue-tint)'};color:${u.role==='hr'?'var(--brand)':u.role==='sales'?'var(--violet)':'var(--blue)'}">${esc(ROLE_LABEL[u.role]||u.role||'—')}</span></td>
               <td class="hide-sm" style="color:var(--ink-soft)">${fmtD(u.createdAt)}</td>
             </tr>`).join('') : `<tr><td colspan="4" class="text-center py-6" style="color:var(--ink-soft)">لا يوجد مستخدمون بعد</td></tr>`}
           </tbody>
@@ -1134,7 +1141,7 @@ function openDetailModal(id){
     else if(r.status==='attended') actionsHTML = `<button class="btn btn-brand px-4 py-2 text-sm" data-action="examine" data-id="${r.id}">تم الفحص</button>`;
     else if(r.status==='examined') actionsHTML = `<button class="btn btn-brand px-4 py-2 text-sm" data-action="complete" data-id="${r.id}">إكمال الطلب</button>`;
   }
-  if(S.role==='hr'){
+  if(S.role==='hr' || S.role==='sales'){
     actionsHTML += `<button class="btn btn-ghost px-4 py-2 text-sm" data-action="edit" data-id="${r.id}">${iconEdit}<span class="mr-1">تعديل الطلب</span></button>`;
   }
 
