@@ -251,7 +251,7 @@ onAuthStateChanged(auth, async (user)=>{
     }
   }catch(e){
     console.error(e);
-    renderAuthScreen('تعذّر الاتصال بقاعدة البيانات. تأكد من إعداد Firestore وقواعد الحماية.');
+    renderAuthScreen(`تعذّر الاتصال بقاعدة البيانات. تأكد من إعداد Firestore وقواعد الحماية. — رمز الخطأ: ${e.code || e.message || 'غير معروف'}`);
   }
 });
 
