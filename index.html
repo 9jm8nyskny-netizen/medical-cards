@@ -312,6 +312,7 @@ const S = {
   tab:null,
   filters:{ q:'', status:'', company:'', sponsor:'', from:'', to:'' },
   notifOpen:false,
+  completedMonth:null,
   pendingPhotoURL:null, photoUploadPromise:null,
   editPendingPhotoURL:null, editPhotoUploadPromise:null,
 };
@@ -516,10 +517,12 @@ function buildShell(){
     {id:'dashboard', label:'لوحة التحكم', icon:iconGrid},
     {id:'new', label:'طلب فحص جديد', icon:iconPlus},
     {id:'log', label:'سجل الطلبات', icon:iconList},
+    {id:'completed', label:'طلبات مكتملة', icon:iconCheck},
     {id:'users', label:'إدارة المستخدمين', icon:iconUsers},
   ] : isSales ? [
     {id:'dashboard', label:'لوحة التحكم', icon:iconGrid},
     {id:'log', label:'سجل الطلبات', icon:iconList},
+    {id:'completed', label:'طلبات مكتملة', icon:iconCheck},
   ] : [
     {id:'inbox', label:'الطلبات الواردة', icon:iconInbox},
     {id:'log', label:'جميع الطلبات', icon:iconList},
@@ -594,7 +597,7 @@ function closeMobileNav(){ $('#mobileNav').classList.add('hidden'); }
 function setTab(tab){
   S.tab = tab;
   document.querySelectorAll('[data-tab]').forEach(n=> n.classList.toggle('active', n.dataset.tab===tab));
-  const titles = { dashboard:'لوحة التحكم', new:'إنشاء طلب فحص طبي جديد', log:'سجل الطلبات', inbox:'الطلبات الواردة', users:'إدارة المستخدمين' };
+  const titles = { dashboard:'لوحة التحكم', new:'إنشاء طلب فحص طبي جديد', log:'سجل الطلبات', inbox:'الطلبات الواردة', users:'إدارة المستخدمين', completed:'طلبات مكتملة' };
   $('#pageTitle').textContent = titles[tab] || '';
   renderTab();
 }
@@ -738,6 +741,7 @@ function renderTab(){
   if(S.tab==='log') return renderLog();
   if(S.tab==='inbox') return renderInbox();
   if(S.tab==='users') return renderUsersAdmin();
+  if(S.tab==='completed') return renderCompleted();
 }
 
 /* ---------------- HR: Dashboard ---------------- */
@@ -1116,6 +1120,45 @@ function requestsTable(items){
     </tbody>
   </table></div>`;
 }
+/* ---------------- Completed requests (grouped by month) ---------------- */
+function renderCompleted(){
+  const body = $('#pageBody'); if(!body) return;
+  const completed = S.requests.filter(r=>r.status==='completed');
+
+  // Group by year-month of the request's creation date (e.g. "2026-09")
+  const groups = {};
+  completed.forEach(r=>{
+    if(!r.createdAt) return;
+    const key = r.createdAt.slice(0,7);
+    (groups[key] = groups[key] || []).push(r);
+  });
+  const monthKeys = Object.keys(groups).sort((a,b)=> b.localeCompare(a));
+
+  if(!monthKeys.length){
+    body.innerHTML = `<div class="card overflow-hidden">${emptyState('لا توجد طلبات مكتملة بعد', 'ستظهر هنا الطلبات المكتملة مجمّعة حسب شهر تقديمها.')}</div>`;
+    return;
+  }
+  if(!S.completedMonth || !groups[S.completedMonth]) S.completedMonth = monthKeys[0];
+
+  const monthLabel = key=>{
+    const [y,m] = key.split('-').map(Number);
+    return new Intl.DateTimeFormat('ar', {calendar:'gregory', month:'long', year:'numeric'}).format(new Date(y, m-1, 1));
+  };
+
+  body.innerHTML = `
+    <div class="flex flex-wrap gap-2 mb-5">
+      ${monthKeys.map(k=>`<button class="btn ${k===S.completedMonth?'btn-brand':'btn-ghost'} px-4 py-2 text-sm" data-month="${k}" style="border-radius:999px;">
+        ${esc(monthLabel(k))} <span style="opacity:.85">(${groups[k].length})</span>
+      </button>`).join('')}
+    </div>
+    <div class="card overflow-hidden">${requestsTable(groups[S.completedMonth].slice().sort((a,b)=> (b.createdAt||'').localeCompare(a.createdAt||'')))}</div>`;
+
+  document.querySelectorAll('[data-month]').forEach(btn=>{
+    btn.onclick = ()=>{ S.completedMonth = btn.dataset.month; renderCompleted(); };
+  });
+  wireRequestTableEvents();
+}
+
 function wireRequestTableEvents(){
   document.querySelectorAll('[data-openreq]').forEach(el=>{
     el.onclick = (e)=>{ e.stopPropagation(); openDetailModal(el.dataset.openreq); };
