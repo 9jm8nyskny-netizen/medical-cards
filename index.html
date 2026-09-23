@@ -65,20 +65,14 @@
   th{font-size:.76rem; color:var(--ink-soft); font-weight:700; text-align:right; padding:.6rem .8rem; border-bottom:1px solid var(--line); white-space:nowrap;}
   td{padding:.65rem .8rem; border-bottom:1px solid var(--line); font-size:.87rem; vertical-align:middle;}
   tr:hover td{background:var(--surface-2);}
-  /* Card-style table on phones: rows become stacked key/value cards instead of a squeezed, scrolling grid */
-  @media (max-width: 680px){
-    table.rtable thead{ display:none; }
-    table.rtable, table.rtable tbody, table.rtable tr, table.rtable td{ display:block; width:100%; }
-    table.rtable{ display:flex; flex-direction:column; gap:10px; }
-    table.rtable tr{ border:1px solid var(--line); border-radius:12px; padding:.65rem .9rem; background:var(--surface); }
-    table.rtable tr:hover td{ background:transparent; }
-    table.rtable td{ border:none; padding:.3rem 0; display:flex; justify-content:space-between; align-items:center; gap:.75rem; font-size:.86rem; }
-    table.rtable td::before{ content:attr(data-label); font-weight:700; color:var(--ink-soft); font-size:.74rem; flex-shrink:0; }
-    table.rtable td[data-label]:empty::before{ content:none; }
-    table.rtable td.rt-actions{ justify-content:flex-end; padding-top:.5rem; }
-    table.rtable td.rt-actions::before{ content:none; }
-    table.rtable td.rt-photo{ justify-content:flex-start; padding-bottom:.4rem; }
-    .scrollx{ overflow-x:visible; }
+  table.rtable tr.rt-row{cursor:pointer;}
+  .rt-emp{display:flex; align-items:center; gap:.55rem; white-space:nowrap;}
+  /* Compact real table on phones: keep it a genuine table (like a normal list),
+     just hide the secondary columns instead of stacking every field into a tall card. */
+  @media (max-width: 640px){
+    table.rtable th, table.rtable td{ padding:.55rem .5rem; font-size:.82rem; }
+    table.rtable .hide-sm{ display:none; }
+    table.rtable .rt-emp{ gap:.4rem; }
   }
   .modal-backdrop{position:fixed; inset:0; background:rgba(10,20,17,.5); backdrop-filter:blur(2px); z-index:50; display:flex; align-items:center; justify-content:center; padding:1rem;}
   .avatar{width:44px; height:44px; border-radius:50%; object-fit:cover; background:var(--surface-2); border:1px solid var(--line);}
@@ -795,13 +789,13 @@ function renderUsersAdmin(){
       <div class="card overflow-hidden">
         <div class="px-5 py-4 font-bold" style="border-bottom:1px solid var(--line)">المستخدمون الحاليون (${S.users.length})</div>
         <div class="scrollx"><table class="rtable">
-          <thead><tr><th>الاسم</th><th>البريد الإلكتروني</th><th>الصفة</th><th>تاريخ الإنشاء</th></tr></thead>
+          <thead><tr><th>الاسم</th><th>البريد الإلكتروني</th><th>الصفة</th><th class="hide-sm">تاريخ الإنشاء</th></tr></thead>
           <tbody>
             ${S.users.length ? S.users.map(u=>`<tr>
-              <td data-label="الاسم" class="font-bold">${esc(u.name||'—')}</td>
-              <td data-label="البريد الإلكتروني" style="color:var(--ink-soft)">${esc(u.email||'—')}</td>
-              <td data-label="الصفة"><span class="badge" style="background:${u.role==='hr'?'var(--brand-tint)':'var(--blue-tint)'};color:${u.role==='hr'?'var(--brand)':'var(--blue)'}">${esc(ROLE_LABEL[u.role]||u.role||'—')}</span></td>
-              <td data-label="تاريخ الإنشاء" style="color:var(--ink-soft)">${fmtD(u.createdAt)}</td>
+              <td class="font-bold">${esc(u.name||'—')}</td>
+              <td class="truncate" style="max-width:160px;color:var(--ink-soft)">${esc(u.email||'—')}</td>
+              <td><span class="badge" style="background:${u.role==='hr'?'var(--brand-tint)':'var(--blue-tint)'};color:${u.role==='hr'?'var(--brand)':'var(--blue)'}">${esc(ROLE_LABEL[u.role]||u.role||'—')}</span></td>
+              <td class="hide-sm" style="color:var(--ink-soft)">${fmtD(u.createdAt)}</td>
             </tr>`).join('') : `<tr><td colspan="4" class="text-center py-6" style="color:var(--ink-soft)">لا يوجد مستخدمون بعد</td></tr>`}
           </tbody>
         </table></div>
@@ -880,27 +874,35 @@ function requestsTable(items){
   if(!items.length) return emptyState('لا توجد طلبات مطابقة', 'جرّب تعديل عوامل البحث أعلاه.');
   return `
   <div class="scrollx"><table class="rtable">
-    <thead><tr><th>الصورة</th><th>رقم الطلب</th><th>الموظف</th><th>الهوية</th><th>الكفيل</th><th>الشركة</th><th>الحالة</th><th>تاريخ الطلب</th><th></th></tr></thead>
+    <thead><tr>
+      <th>الموظف</th><th>رقم الطلب</th>
+      <th class="hide-sm">الهوية</th><th class="hide-sm">الكفيل</th><th class="hide-sm">الشركة</th>
+      <th>الحالة</th><th class="hide-sm">تاريخ الطلب</th><th class="hide-sm"></th>
+    </tr></thead>
     <tbody>
       ${items.map(r=>{
         const st = STATUS[r.status]||STATUS.sent;
         const photo = r.photoURL
-          ? `<img src="${r.photoURL}" class="avatar" style="width:32px;height:32px">`
-          : `<div class="avatar flex items-center justify-center" style="width:32px;height:32px;color:var(--ink-soft)">${iconUser}</div>`;
-        return `<tr>
-        <td data-label="" class="rt-photo">${photo}</td>
-        <td data-label="رقم الطلب" class="font-bold">${esc(r.requestNumber)}</td>
-        <td data-label="الموظف">${esc(r.employeeNameAr)}</td>
-        <td data-label="الهوية">${esc(r.idNumber)}</td>
-        <td data-label="الكفيل">${esc(r.sponsorName)}</td>
-        <td data-label="الشركة">${esc(r.companyName)}</td>
-        <td data-label="الحالة"><span class="badge" style="background:${st.tint};color:${st.fg}">${st.label}</span></td>
-        <td data-label="التاريخ" style="color:var(--ink-soft)">${fmtD(r.createdAt)}</td>
-        <td class="rt-actions"><button class="btn btn-ghost px-2.5 py-1 text-xs" data-openreq="${r.id}">تفاصيل</button></td></tr>`; }).join('')}
+          ? `<img src="${r.photoURL}" class="avatar" style="width:30px;height:30px">`
+          : `<div class="avatar flex items-center justify-center" style="width:30px;height:30px;color:var(--ink-soft)">${iconUser}</div>`;
+        return `<tr class="rt-row" data-openreq="${r.id}">
+        <td class="rt-emp">${photo}<span class="font-bold">${esc(r.employeeNameAr)}</span></td>
+        <td>${esc(r.requestNumber)}</td>
+        <td class="hide-sm">${esc(r.idNumber)}</td>
+        <td class="hide-sm">${esc(r.sponsorName)}</td>
+        <td class="hide-sm">${esc(r.companyName)}</td>
+        <td><span class="badge" style="background:${st.tint};color:${st.fg}">${st.label}</span></td>
+        <td class="hide-sm" style="color:var(--ink-soft)">${fmtD(r.createdAt)}</td>
+        <td class="hide-sm rt-actions"><button class="btn btn-ghost px-2.5 py-1 text-xs" data-openreq="${r.id}">تفاصيل</button></td></tr>`;
+      }).join('')}
     </tbody>
   </table></div>`;
 }
-function wireRequestTableEvents(){ document.querySelectorAll('[data-openreq]').forEach(b=>b.onclick=()=>openDetailModal(b.dataset.openreq)); }
+function wireRequestTableEvents(){
+  document.querySelectorAll('[data-openreq]').forEach(el=>{
+    el.onclick = (e)=>{ e.stopPropagation(); openDetailModal(el.dataset.openreq); };
+  });
+}
 function emptyState(title, sub){
   return `<div class="text-center py-14 px-4">
     <div class="mx-auto mb-3" style="width:52px;height:52px;border-radius:14px;background:var(--surface-2);display:flex;align-items:center;justify-content:center;color:var(--ink-soft)">${iconInbox}</div>
