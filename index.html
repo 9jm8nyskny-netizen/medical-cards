@@ -77,6 +77,7 @@
     table.rtable td[data-label]:empty::before{ content:none; }
     table.rtable td.rt-actions{ justify-content:flex-end; padding-top:.5rem; }
     table.rtable td.rt-actions::before{ content:none; }
+    table.rtable td.rt-photo{ justify-content:flex-start; padding-bottom:.4rem; }
     .scrollx{ overflow-x:visible; }
   }
   .modal-backdrop{position:fixed; inset:0; background:rgba(10,20,17,.5); backdrop-filter:blur(2px); z-index:50; display:flex; align-items:center; justify-content:center; padding:1rem;}
@@ -879,9 +880,15 @@ function requestsTable(items){
   if(!items.length) return emptyState('لا توجد طلبات مطابقة', 'جرّب تعديل عوامل البحث أعلاه.');
   return `
   <div class="scrollx"><table class="rtable">
-    <thead><tr><th>رقم الطلب</th><th>الموظف</th><th>الهوية</th><th>الكفيل</th><th>الشركة</th><th>الحالة</th><th>تاريخ الطلب</th><th></th></tr></thead>
+    <thead><tr><th>الصورة</th><th>رقم الطلب</th><th>الموظف</th><th>الهوية</th><th>الكفيل</th><th>الشركة</th><th>الحالة</th><th>تاريخ الطلب</th><th></th></tr></thead>
     <tbody>
-      ${items.map(r=>{ const st = STATUS[r.status]||STATUS.sent; return `<tr>
+      ${items.map(r=>{
+        const st = STATUS[r.status]||STATUS.sent;
+        const photo = r.photoURL
+          ? `<img src="${r.photoURL}" class="avatar" style="width:32px;height:32px">`
+          : `<div class="avatar flex items-center justify-center" style="width:32px;height:32px;color:var(--ink-soft)">${iconUser}</div>`;
+        return `<tr>
+        <td data-label="" class="rt-photo">${photo}</td>
         <td data-label="رقم الطلب" class="font-bold">${esc(r.requestNumber)}</td>
         <td data-label="الموظف">${esc(r.employeeNameAr)}</td>
         <td data-label="الهوية">${esc(r.idNumber)}</td>
