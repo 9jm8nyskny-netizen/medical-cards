@@ -227,10 +227,52 @@ function arError(code){
   return map[code] || 'حدث خطأ، حاول مرة أخرى';
 }
 
+/* ============================= SESSION TIMEOUT (20 min inactivity) =============================
+   Firebase Auth otherwise keeps a device signed in indefinitely. This layer forces a fresh
+   login after 20 minutes with no real user interaction (click/tap/keypress), on this device. */
+const SESSION_MAX_AGE_MS = 20 * 60 * 1000;
+const SESSION_KEY = 'masar_last_activity';
+let sessionInterval = null;
+let sessionListenersAttached = false;
+function touchSession(){ try{ localStorage.setItem(SESSION_KEY, String(Date.now())); }catch(e){} }
+function clearSession(){ try{ localStorage.removeItem(SESSION_KEY); }catch(e){} }
+function isSessionExpired(){
+  let last = 0;
+  try{ last = Number(localStorage.getItem(SESSION_KEY) || 0); }catch(e){}
+  if(!last) return true;
+  return (Date.now() - last) > SESSION_MAX_AGE_MS;
+}
+function onUserActivity(){ if(auth.currentUser) touchSession(); }
+function startSessionWatch(){
+  if(!sessionListenersAttached){
+    ['click','keydown','touchstart'].forEach(evt => document.addEventListener(evt, onUserActivity, {passive:true}));
+    sessionListenersAttached = true;
+  }
+  if(sessionInterval) clearInterval(sessionInterval);
+  sessionInterval = setInterval(()=>{
+    if(isSessionExpired()){
+      stopSessionWatch();
+      clearSession();
+      toast('تم تسجيل الخروج تلقائياً لعدم النشاط لمدة 20 دقيقة','error');
+      signOut(auth);
+    }
+  }, 15000);
+}
+function stopSessionWatch(){
+  if(sessionInterval){ clearInterval(sessionInterval); sessionInterval = null; }
+}
+
 /* ============================= AUTH FLOW ============================= */
 onAuthStateChanged(auth, async (user)=>{
   clearSubs();
-  if(!user){ renderAuthScreen(); return; }
+  stopSessionWatch();
+  if(!user){ clearSession(); renderAuthScreen(); return; }
+  if(isSessionExpired()){
+    clearSession();
+    await signOut(auth);
+    return; // will re-trigger this callback with user === null
+  }
+  touchSession();
   S.me.uid = user.uid; S.me.email = user.email || '';
   try{
     const uSnap = await getDoc(doc(db,'users',user.uid));
@@ -303,6 +345,7 @@ function startApp(){
   S.tab = S.role==='hr' ? 'dashboard' : 'inbox';
   buildShell();
   subscribeAll();
+  startSessionWatch();
 }
 
 function buildShell(){
