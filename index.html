@@ -1016,14 +1016,20 @@ function renderUsersAdmin(){
       <div class="card overflow-hidden">
         <div class="px-5 py-4 font-bold" style="border-bottom:1px solid var(--line)">المستخدمون الحاليون (${S.users.length})</div>
         <div class="scrollx"><table class="rtable">
-          <thead><tr><th>الاسم</th><th>البريد الإلكتروني</th><th>الصفة</th><th class="hide-sm">تاريخ الإنشاء</th></tr></thead>
+          <thead><tr><th>الاسم</th><th>البريد الإلكتروني</th><th>الصفة</th><th class="hide-sm">تاريخ الإنشاء</th><th></th></tr></thead>
           <tbody>
             ${S.users.length ? S.users.map(u=>`<tr>
               <td class="font-bold">${esc(u.name||'—')}</td>
               <td class="truncate" style="max-width:160px;color:var(--ink-soft)">${esc(u.email||'—')}</td>
               <td><span class="badge" style="background:${u.role==='hr'?'var(--brand-tint)':u.role==='sales'?'var(--violet-tint)':'var(--blue-tint)'};color:${u.role==='hr'?'var(--brand)':u.role==='sales'?'var(--violet)':'var(--blue)'}">${esc(ROLE_LABEL[u.role]||u.role||'—')}</span></td>
               <td class="hide-sm" style="color:var(--ink-soft)">${fmtD(u.createdAt)}</td>
-            </tr>`).join('') : `<tr><td colspan="4" class="text-center py-6" style="color:var(--ink-soft)">لا يوجد مستخدمون بعد</td></tr>`}
+              <td>
+                <div class="flex items-center gap-1.5 justify-end">
+                  <button class="btn btn-ghost px-2.5 py-1 text-xs" data-edituser="${u.id}" title="تعديل">${iconEdit}</button>
+                  ${u.id!==S.me.uid ? `<button class="btn btn-ghost px-2.5 py-1 text-xs" data-deluser="${u.id}" title="حذف" style="color:var(--red)">${iconTrash}</button>` : ''}
+                </div>
+              </td>
+            </tr>`).join('') : `<tr><td colspan="5" class="text-center py-6" style="color:var(--ink-soft)">لا يوجد مستخدمون بعد</td></tr>`}
           </tbody>
         </table></div>
       </div>
@@ -1058,6 +1064,78 @@ function renderUsersAdmin(){
       btn.disabled = false; btn.textContent = 'إنشاء الحساب';
     }
   });
+
+  document.querySelectorAll('[data-edituser]').forEach(b=>b.onclick=()=>openEditUserModal(b.dataset.edituser));
+  document.querySelectorAll('[data-deluser]').forEach(b=>b.onclick=()=>openDeleteUserConfirm(b.dataset.deluser));
+}
+
+function openEditUserModal(uid){
+  const u = S.users.find(x=>x.id===uid); if(!u) return;
+  const wrap = el('div','modal-backdrop');
+  wrap.innerHTML = `
+    <div class="card p-5 w-full max-w-sm fade-in">
+      <h3 class="font-bold mb-4">تعديل بيانات المستخدم</h3>
+      <div class="grid gap-3">
+        <div><label class="field-label">الاسم *</label><input id="euName" required value="${esc(u.name||'')}"></div>
+        <div>
+          <label class="field-label">الصفة *</label>
+          <select id="euRole">
+            <option value="reception" ${u.role==='reception'?'selected':''}>موظف استقبال المركز الطبي</option>
+            <option value="sales" ${u.role==='sales'?'selected':''}>موظف المبيعات</option>
+            <option value="hr" ${u.role==='hr'?'selected':''}>مسؤول الموارد البشرية</option>
+          </select>
+        </div>
+        <p class="text-xs" style="color:var(--ink-soft)">البريد الإلكتروني وكلمة المرور لا يمكن تعديلهما من هنا حالياً — من Firebase Console فقط.</p>
+      </div>
+      <div class="flex gap-2 mt-4">
+        <button id="euSave" class="btn btn-brand px-4 py-2 text-sm flex-1">حفظ التعديلات</button>
+        <button id="euCancel" class="btn btn-ghost px-4 py-2 text-sm">إلغاء</button>
+      </div>
+    </div>`;
+  document.body.appendChild(wrap);
+  wrap.querySelector('#euCancel').onclick = ()=>wrap.remove();
+  wrap.onclick = (e)=>{ if(e.target===wrap) wrap.remove(); };
+  wrap.querySelector('#euSave').onclick = async ()=>{
+    const name = wrap.querySelector('#euName').value.trim();
+    const role = wrap.querySelector('#euRole').value;
+    if(!name){ toast('الرجاء كتابة الاسم','error'); return; }
+    try{
+      await updateDoc(doc(db,'users',uid), { name, role });
+      await addLog(null, null, 'تم تعديل بيانات مستخدم', `${name} (${u.email}) — ${ROLE_LABEL[role]}`);
+      toast('تم حفظ التعديلات'); wrap.remove();
+    }catch(e){ console.error(e); toast('تعذّر حفظ التعديلات','error'); }
+  };
+}
+
+function openDeleteUserConfirm(uid){
+  const u = S.users.find(x=>x.id===uid); if(!u) return;
+  const wrap = el('div','modal-backdrop');
+  wrap.innerHTML = `
+    <div class="card p-5 w-full max-w-sm fade-in">
+      <h3 class="font-bold mb-1" style="color:var(--red)">حذف المستخدم</h3>
+      <p class="text-xs mb-4" style="color:var(--ink-soft)">هل أنت متأكد من حذف حساب ${esc(u.name||u.email)}؟ لن يتمكن بعدها من الدخول إلى التطبيق. (يبقى حساب الدخول نفسه موجوداً في Firebase Auth ويحتاج حذف يدوي من Firebase Console إذا رغبت بإزالته نهائياً).</p>
+      <div class="flex gap-2">
+        <button id="duConfirm" class="btn btn-danger px-4 py-2 text-sm flex-1">${iconTrash}<span class="mr-1">تأكيد الحذف</span></button>
+        <button id="duCancel" class="btn btn-ghost px-4 py-2 text-sm">إلغاء</button>
+      </div>
+    </div>`;
+  document.body.appendChild(wrap);
+  wrap.querySelector('#duCancel').onclick = ()=>wrap.remove();
+  wrap.onclick = (e)=>{ if(e.target===wrap) wrap.remove(); };
+  wrap.querySelector('#duConfirm').onclick = async ()=>{
+    const btn = wrap.querySelector('#duConfirm'); btn.disabled = true;
+    try{
+      await deleteDoc(doc(db,'users',uid));
+    }catch(e){
+      console.error('user delete failed:', e);
+      toast('تعذّر حذف المستخدم — تأكد من صلاحيات الحذف في Firestore', 'error');
+      btn.disabled = false;
+      return;
+    }
+    try{ await addLog(null, null, 'تم حذف مستخدم', `${u.name||''} (${u.email||''})`); }
+    catch(e){ console.warn('log write after user delete failed:', e); }
+    toast('تم حذف المستخدم'); wrap.remove();
+  };
 }
 
 /* ---------------- Shared: Requests Log ---------------- */
