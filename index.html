@@ -635,13 +635,17 @@ function subscribeAll(){
   }, e=>console.error('sponsors sub', e)));
 
   if(S.role==='hr' || S.role==='sales'){
+    // For HR: full list ordered server-side. For sales: filter to their own
+    // hires with a single-field query (no orderBy) so no composite Firestore
+    // index is required — sorted client-side instead.
     const usersQ = S.role==='hr'
       ? query(collection(db,'users'), orderBy('createdAt','desc'), limit(500))
-      : query(collection(db,'users'), where('createdBy','==',S.me.uid), orderBy('createdAt','desc'), limit(500));
+      : query(collection(db,'users'), where('createdBy','==',S.me.uid), limit(500));
     S.unsubs.push(onSnapshot(usersQ, snap=>{
       S.users = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+      if(S.role==='sales') S.users.sort((a,b)=> (b.createdAt||'').localeCompare(a.createdAt||''));
       if(S.tab==='users') renderUsersAdmin();
-    }, e=>console.error('users sub', e)));
+    }, e=>{ console.error('users sub', e); toast('تعذّر تحميل قائمة المستخدمين','error'); }));
   }
 }
 function refreshDatalists(){
@@ -1019,20 +1023,22 @@ function renderUsersAdmin(){
       <div class="card overflow-hidden">
         <div class="px-5 py-4 font-bold" style="border-bottom:1px solid var(--line)">${isHR?'المستخدمون الحاليون':'الحسابات التي أضفتها'} (${S.users.length})</div>
         <div class="scrollx"><table class="rtable">
-          <thead><tr><th>الاسم</th><th>البريد الإلكتروني</th><th>الصفة</th><th class="hide-sm">تاريخ الإنشاء</th>${isHR?'<th></th>':''}</tr></thead>
+          <thead><tr><th>الاسم</th><th>البريد الإلكتروني</th><th>الصفة</th><th class="hide-sm">تاريخ الإنشاء</th>${isHR?'<th class="hide-sm">أُضيف بواسطة</th><th></th>':''}</tr></thead>
           <tbody>
-            ${S.users.length ? S.users.map(u=>`<tr>
+            ${S.users.length ? S.users.map(u=>{
+              const creatorName = u.createdByName || (S.users.find(x=>x.id===u.createdBy)||{}).name || '—';
+              return `<tr>
               <td class="font-bold">${esc(u.name||'—')}</td>
               <td class="truncate" style="max-width:160px;color:var(--ink-soft)">${esc(u.email||'—')}</td>
               <td><span class="badge" style="background:${u.role==='hr'?'var(--brand-tint)':u.role==='sales'?'var(--violet-tint)':'var(--blue-tint)'};color:${u.role==='hr'?'var(--brand)':u.role==='sales'?'var(--violet)':'var(--blue)'}">${esc(ROLE_LABEL[u.role]||u.role||'—')}</span></td>
               <td class="hide-sm" style="color:var(--ink-soft)">${fmtD(u.createdAt)}</td>
-              ${isHR ? `<td>
+              ${isHR ? `<td class="hide-sm" style="color:var(--ink-soft)">${esc(creatorName)}</td><td>
                 <div class="flex items-center gap-1.5 justify-end">
                   <button class="btn btn-ghost px-2.5 py-1 text-xs" data-edituser="${u.id}" title="تعديل">${iconEdit}</button>
                   ${u.id!==S.me.uid ? `<button class="btn btn-ghost px-2.5 py-1 text-xs" data-deluser="${u.id}" title="حذف" style="color:var(--red)">${iconTrash}</button>` : ''}
                 </div>
               </td>` : ''}
-            </tr>`).join('') : `<tr><td colspan="${isHR?5:4}" class="text-center py-6" style="color:var(--ink-soft)">${isHR?'لا يوجد مستخدمون بعد':'لم تُضف أي حسابات بعد'}</td></tr>`}
+            </tr>`;}).join('') : `<tr><td colspan="${isHR?6:4}" class="text-center py-6" style="color:var(--ink-soft)">${isHR?'لا يوجد مستخدمون بعد':'لم تُضف أي حسابات بعد'}</td></tr>`}
           </tbody>
         </table></div>
       </div>
@@ -1055,7 +1061,7 @@ function renderUsersAdmin(){
       await updateProfile(cred.user, { displayName: name });
       const newUid = cred.user.uid;
       await signOut(secondaryAuth);
-      await setDoc(doc(db,'users',newUid), { name, email, role, createdAt: nowISO(), createdBy: S.me.uid });
+      await setDoc(doc(db,'users',newUid), { name, email, role, createdAt: nowISO(), createdBy: S.me.uid, createdByName: S.me.name||'' });
       await addDoc(collection(db,'logs'), { requestId:null, requestNumber:null, action:'تم إنشاء حساب مستخدم', details:`${name} (${email}) — ${ROLE_LABEL[role]}`, byUserId:S.me.uid, byUserName:S.me.name||'', role:S.role, at:nowISO() });
       toast(`تم إنشاء حساب ${name} بنجاح`);
       e.target.reset();
