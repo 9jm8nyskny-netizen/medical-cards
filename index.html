@@ -528,6 +528,7 @@ function buildShell(){
     {id:'dashboard', label:'لوحة التحكم', icon:iconGrid},
     {id:'log', label:'سجل الطلبات', icon:iconList},
     {id:'completed', label:'طلبات مكتملة', icon:iconCheck},
+    {id:'users', label:'إدارة المستخدمين', icon:iconUsers},
   ] : [
     {id:'inbox', label:'الطلبات الواردة', icon:iconInbox},
     {id:'log', label:'جميع الطلبات', icon:iconList},
@@ -633,8 +634,10 @@ function subscribeAll(){
     refreshDatalists();
   }, e=>console.error('sponsors sub', e)));
 
-  if(S.role==='hr'){
-    const usersQ = query(collection(db,'users'), orderBy('createdAt','desc'), limit(500));
+  if(S.role==='hr' || S.role==='sales'){
+    const usersQ = S.role==='hr'
+      ? query(collection(db,'users'), orderBy('createdAt','desc'), limit(500))
+      : query(collection(db,'users'), where('createdBy','==',S.me.uid), orderBy('createdAt','desc'), limit(500));
     S.unsubs.push(onSnapshot(usersQ, snap=>{
       S.users = snap.docs.map(d=>({ id:d.id, ...d.data() }));
       if(S.tab==='users') renderUsersAdmin();
@@ -740,7 +743,7 @@ async function notify({toRole, toUserId, requestId, requestNumber, message}){
 function renderTab(){
   if(!S.tab) return;
   if(S.tab==='new' && S.role!=='hr'){ S.tab='dashboard'; }
-  if(S.tab==='users' && S.role!=='hr'){ S.tab='dashboard'; }
+  if(S.tab==='users' && !(S.role==='hr'||S.role==='sales')){ S.tab='dashboard'; }
   if(S.tab==='dashboard') return renderDashboard();
   if(S.tab==='new') return renderNewRequest();
   if(S.tab==='log') return renderLog();
@@ -987,9 +990,10 @@ function openRejectModal(id){
 }
 function closeModal(){ document.querySelectorAll('.modal-backdrop').forEach(m=>m.remove()); }
 
-/* ---------------- HR: User Management ---------------- */
+/* ---------------- User Management (HR: full control · Sales: own hires, view-only) ---------------- */
 function renderUsersAdmin(){
   const body = $('#pageBody'); if(!body) return;
+  const isHR = S.role==='hr';
   body.innerHTML = `
     <div class="grid gap-6" style="grid-template-columns:minmax(0,1fr);max-width:900px">
       <div class="card p-5 md:p-6">
@@ -1002,8 +1006,7 @@ function renderUsersAdmin(){
             <label class="field-label">الصفة *</label>
             <select name="role">
               <option value="reception">موظف استقبال المركز الطبي</option>
-              <option value="sales">موظف المبيعات</option>
-              <option value="hr">مسؤول الموارد البشرية</option>
+              ${isHR ? `<option value="sales">موظف المبيعات</option><option value="hr">مسؤول الموارد البشرية</option>` : ''}
             </select>
           </div>
           <div class="md:col-span-2 flex items-center gap-3 pt-1">
@@ -1014,22 +1017,22 @@ function renderUsersAdmin(){
         <p class="text-xs mt-3" style="color:var(--ink-soft)">شارك البريد وكلمة المرور المؤقتة مع الموظف؛ لا توجد حالياً خاصية لتغيير كلمة المرور من داخل التطبيق — يمكن ذلك لاحقاً من Firebase Console.</p>
       </div>
       <div class="card overflow-hidden">
-        <div class="px-5 py-4 font-bold" style="border-bottom:1px solid var(--line)">المستخدمون الحاليون (${S.users.length})</div>
+        <div class="px-5 py-4 font-bold" style="border-bottom:1px solid var(--line)">${isHR?'المستخدمون الحاليون':'الحسابات التي أضفتها'} (${S.users.length})</div>
         <div class="scrollx"><table class="rtable">
-          <thead><tr><th>الاسم</th><th>البريد الإلكتروني</th><th>الصفة</th><th class="hide-sm">تاريخ الإنشاء</th><th></th></tr></thead>
+          <thead><tr><th>الاسم</th><th>البريد الإلكتروني</th><th>الصفة</th><th class="hide-sm">تاريخ الإنشاء</th>${isHR?'<th></th>':''}</tr></thead>
           <tbody>
             ${S.users.length ? S.users.map(u=>`<tr>
               <td class="font-bold">${esc(u.name||'—')}</td>
               <td class="truncate" style="max-width:160px;color:var(--ink-soft)">${esc(u.email||'—')}</td>
               <td><span class="badge" style="background:${u.role==='hr'?'var(--brand-tint)':u.role==='sales'?'var(--violet-tint)':'var(--blue-tint)'};color:${u.role==='hr'?'var(--brand)':u.role==='sales'?'var(--violet)':'var(--blue)'}">${esc(ROLE_LABEL[u.role]||u.role||'—')}</span></td>
               <td class="hide-sm" style="color:var(--ink-soft)">${fmtD(u.createdAt)}</td>
-              <td>
+              ${isHR ? `<td>
                 <div class="flex items-center gap-1.5 justify-end">
                   <button class="btn btn-ghost px-2.5 py-1 text-xs" data-edituser="${u.id}" title="تعديل">${iconEdit}</button>
                   ${u.id!==S.me.uid ? `<button class="btn btn-ghost px-2.5 py-1 text-xs" data-deluser="${u.id}" title="حذف" style="color:var(--red)">${iconTrash}</button>` : ''}
                 </div>
-              </td>
-            </tr>`).join('') : `<tr><td colspan="5" class="text-center py-6" style="color:var(--ink-soft)">لا يوجد مستخدمون بعد</td></tr>`}
+              </td>` : ''}
+            </tr>`).join('') : `<tr><td colspan="${isHR?5:4}" class="text-center py-6" style="color:var(--ink-soft)">${isHR?'لا يوجد مستخدمون بعد':'لم تُضف أي حسابات بعد'}</td></tr>`}
           </tbody>
         </table></div>
       </div>
