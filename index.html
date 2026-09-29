@@ -1198,11 +1198,20 @@ function openDeleteConfirm(id){
   wrap.querySelector('#delCancel').onclick = ()=>wrap.remove();
   wrap.onclick = (e)=>{ if(e.target===wrap) wrap.remove(); };
   wrap.querySelector('#delConfirm').onclick = async ()=>{
+    const btn = wrap.querySelector('#delConfirm'); btn.disabled = true;
     try{
       await deleteDoc(doc(db,'requests',id));
-      await addLog(id, r.requestNumber, 'تم حذف الطلب', '');
-      toast('تم حذف الطلب'); wrap.remove(); closeModal();
-    }catch(e){ console.error(e); toast('تعذّر حذف الطلب','error'); }
+    }catch(e){
+      console.error('delete failed:', e);
+      toast('تعذّر حذف الطلب — تأكد من صلاحيات الحذف في Firestore', 'error');
+      btn.disabled = false;
+      return;
+    }
+    // الطلب انحذف فعلياً بهذي النقطة؛ تسجيل الحدث في السجل خطوة ثانوية
+    // ولا يجب أن تُظهر خطأ للمستخدم لو فشلت هي وحدها.
+    try{ await addLog(id, r.requestNumber, 'تم حذف الطلب', ''); }
+    catch(e){ console.warn('log write after delete failed:', e); }
+    toast('تم حذف الطلب'); wrap.remove(); closeModal();
   };
 }
 function emptyState(title, sub){
