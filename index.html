@@ -435,19 +435,19 @@ function renderAuthScreen(errMsg){
 
       <div id="errSlot" class="mb-3">${errMsg? `<div class="err-box">${iconAlert}<span>${esc(errMsg)}</span></div>`:''}</div>
 
-      <form id="loginForm" class="grid gap-4">
+      <form id="loginForm" class="grid gap-4" autocomplete="off">
         <div>
           <label class="field-label">البريد الإلكتروني</label>
           <div class="field-icon-wrap">
             <span class="field-icon">${iconMail}</span>
-            <input required type="email" name="email" autocomplete="email" placeholder="name@example.com">
+            <input required type="email" name="email" autocomplete="off" placeholder="name@example.com">
           </div>
         </div>
         <div>
           <label class="field-label">كلمة المرور</label>
           <div class="field-icon-wrap">
             <span class="field-icon">${iconLock}</span>
-            <input required type="password" name="password" id="pwInput" autocomplete="current-password" placeholder="••••••••">
+            <input required type="password" name="password" id="pwInput" autocomplete="new-password" placeholder="••••••••">
             <button type="button" id="pwToggle" class="field-toggle" aria-label="إظهار كلمة المرور" title="إظهار كلمة المرور">${iconEye}</button>
           </div>
         </div>
