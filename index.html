@@ -51,6 +51,8 @@
   .btn-ghost{background:transparent; color:var(--ink); border:1px solid var(--line);}
   .btn-ghost:hover{background:var(--surface-2);}
   .btn-danger{background:var(--red); color:#fff;}
+  .req-type-btn{background:var(--surface-2); color:var(--ink-soft); border:1.5px solid var(--line); padding:.6rem .8rem;}
+  .req-type-btn.active{background:var(--brand); color:#fff; border-color:var(--brand);}
   .btn-danger:hover{opacity:.9;}
   input,select,textarea{
     background:var(--surface); color:var(--ink); border:1px solid var(--line);
@@ -229,7 +231,7 @@
   .flex{display:flex;} .inline-flex{display:inline-flex;}
   .grid{display:grid;} .grid-cols-2{grid-template-columns:repeat(2,1fr);}
   .flex-1{flex:1 1 0%;} .flex-col{flex-direction:column;} .flex-wrap{flex-wrap:wrap;} .shrink-0{flex-shrink:0;}
-  .items-center{align-items:center;} .items-start{align-items:flex-start;}
+  .items-center{align-items:center;} .items-start{align-items:flex-start;} .items-end{align-items:flex-end;}
   .justify-between{justify-content:space-between;} .justify-center{justify-content:center;}
   .col-span-2{grid-column:span 2 / span 2;}
   .font-bold{font-weight:700;} .truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -315,6 +317,14 @@ const STATUS = {
   completed: { label: 'مكتمل',                   tint:'var(--teal-solid)', fg:'#fff'         },
 };
 const ROLE_LABEL = { hr: 'مسؤول الموارد البشرية', reception: 'استقبال المركز الطبي', sales: 'موظف المبيعات' };
+const REQTYPE = {
+  new:     { label: 'جديد',  tint:'var(--blue-tint)',   fg:'var(--blue)'   },
+  renewal: { label: 'تجديد', tint:'var(--violet-tint)', fg:'var(--violet)' },
+};
+function reqTypeBadge(r){
+  const t = REQTYPE[r.requestType] || REQTYPE.new;
+  return `<span class="badge" style="background:${t.tint};color:${t.fg}">${t.label}</span>`;
+}
 
 /* ============================= STATE ============================= */
 const S = {
@@ -804,6 +814,15 @@ function renderNewRequest(){
     <div class="max-w-2xl">
       <div class="card p-5 md:p-7 fade-in">
         <form id="reqForm" class="grid gap-4">
+          <div>
+            <label class="field-label">نوع الطلب *</label>
+            <div class="flex gap-2">
+              <button type="button" class="btn req-type-btn active" data-type="new" style="flex:1">جديد</button>
+              <button type="button" class="btn req-type-btn" data-type="renewal" style="flex:1">تجديد</button>
+            </div>
+            <p class="text-xs mt-1" style="color:var(--ink-soft)">جديد = لم يسبق للموظف إجراء الفحص. تجديد = سبق له الفحص ويحتاج تجديداً فقط.</p>
+            <input type="hidden" name="requestType" id="requestTypeInput" value="new">
+          </div>
           <div class="grid md:grid-cols-2 gap-4">
             <div><label class="field-label">اسم الموظف (عربي) *</label><input required name="employeeNameAr" placeholder="مثال: محمد أحمد العتيبي"></div>
             <div><label class="field-label">اسم الموظف (إنجليزي)</label><input name="employeeNameEn" placeholder="Mohammed A. Alotaibi"></div>
@@ -834,6 +853,14 @@ function renderNewRequest(){
       </div>
     </div>`;
   refreshDatalists();
+
+  document.querySelectorAll('.req-type-btn').forEach(b=>{
+    b.onclick = ()=>{
+      document.querySelectorAll('.req-type-btn').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+      $('#requestTypeInput').value = b.dataset.type;
+    };
+  });
 
   $('#photoInput').addEventListener('change', (e)=>{
     const f = e.target.files[0]; if(!f) return;
@@ -876,6 +903,7 @@ function renderNewRequest(){
       const reqNumber = genReqNumber();
       const docData = {
         requestNumber: reqNumber,
+        requestType: data.requestType === 'renewal' ? 'renewal' : 'new',
         employeeNameAr: data.employeeNameAr.trim(),
         employeeNameEn: (data.employeeNameEn||'').trim(),
         idNumber: data.idNumber.trim(),
@@ -902,6 +930,7 @@ function renderNewRequest(){
       S.pendingPhotoURL = null;
       S.photoUploadPromise = null;
       e.target.reset();
+      document.querySelectorAll('.req-type-btn').forEach(b=>b.classList.toggle('active', b.dataset.type==='new'));
       $('#photoPreviewWrap').innerHTML = `<span style="color:var(--ink-soft)">${iconUser}</span>`;
       $('#photoStatus').textContent = '';
     }catch(err){ console.error(err); toast('تعذّر حفظ الطلب — راجع قواعد Firestore','error'); }
@@ -1078,7 +1107,10 @@ function requestCard(r){
         <div class="text-[11px]" style="color:var(--ink-soft)">${esc(r.employeeNameEn||'')}</div>
         <div class="text-[11px] mt-0.5" style="color:var(--ink-soft)">هوية: ${esc(r.idNumber)}</div>
       </div>
-      <span class="badge" style="background:${st.tint};color:${st.fg}">${st.label}</span>
+      <div class="flex flex-col items-end gap-1">
+        <span class="badge" style="background:${st.tint};color:${st.fg}">${st.label}</span>
+        ${reqTypeBadge(r)}
+      </div>
     </div>
     <div class="grid grid-cols-2 gap-y-1.5 text-xs mb-3">
       <div><span style="color:var(--ink-soft)">الكفيل: </span>${esc(r.sponsorName)}</div>
@@ -1362,7 +1394,7 @@ function requestsTable(items){
         <td class="hide-sm">${esc(r.idNumber)}</td>
         <td class="hide-sm">${esc(r.sponsorName)}</td>
         <td class="hide-sm">${esc(r.companyName)}</td>
-        <td><span class="badge" style="background:${st.tint};color:${st.fg}">${st.label}</span></td>
+        <td><div class="flex flex-col gap-1"><span class="badge" style="background:${st.tint};color:${st.fg}">${st.label}</span>${reqTypeBadge(r)}</div></td>
         <td class="hide-sm" style="color:var(--ink-soft)">${fmtD(r.createdAt)}</td>
         <td class="hide-sm rt-actions">
           <div class="flex items-center gap-1.5 justify-end">
@@ -1489,7 +1521,10 @@ function openDetailModal(id){
     <div class="card p-5 w-full max-w-lg fade-in" style="max-height:88vh;overflow:auto">
       <div class="flex items-start justify-between gap-3 mb-4">
         <div class="flex items-center gap-3">${photo}<div><div class="font-bold">${esc(r.employeeNameAr)}</div><div class="text-xs" style="color:var(--ink-soft)">${esc(r.employeeNameEn||'')}</div></div></div>
-        <span class="badge" style="background:${st.tint};color:${st.fg}">${st.label}</span>
+        <div class="flex flex-col items-end gap-1">
+          <span class="badge" style="background:${st.tint};color:${st.fg}">${st.label}</span>
+          ${reqTypeBadge(r)}
+        </div>
       </div>
       <div class="grid grid-cols-2 gap-y-2 text-sm mb-3">
         <div><span style="color:var(--ink-soft)">رقم الطلب: </span><b>${esc(r.requestNumber)}</b></div>
@@ -1536,6 +1571,13 @@ function openEditModal(id){
     <div class="card p-5 w-full max-w-lg fade-in" style="max-height:92vh;overflow:auto">
       <h3 class="font-bold mb-4">تعديل الطلب — ${esc(r.requestNumber)}</h3>
       <form id="editForm" class="grid gap-4">
+        <div>
+          <label class="field-label">نوع الطلب</label>
+          <select name="requestType">
+            <option value="new" ${(!r.requestType||r.requestType==='new')?'selected':''}>جديد</option>
+            <option value="renewal" ${r.requestType==='renewal'?'selected':''}>تجديد</option>
+          </select>
+        </div>
         <div class="grid md:grid-cols-2 gap-4">
           <div><label class="field-label">اسم الموظف (عربي) *</label><input required name="employeeNameAr" value="${esc(r.employeeNameAr)}"></div>
           <div><label class="field-label">اسم الموظف (إنجليزي)</label><input name="employeeNameEn" value="${esc(r.employeeNameEn||'')}"></div>
@@ -1614,6 +1656,7 @@ function openEditModal(id){
     saveBtn.disabled = true; saveBtn.textContent = 'جارِ الحفظ…';
     try{
       const updates = {
+        requestType: data.requestType === 'renewal' ? 'renewal' : 'new',
         employeeNameAr: data.employeeNameAr.trim(),
         employeeNameEn: (data.employeeNameEn||'').trim(),
         idNumber: data.idNumber.trim(),
