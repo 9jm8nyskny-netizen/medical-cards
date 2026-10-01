@@ -139,6 +139,9 @@
   }
   .stat-tile .stat-num{font-family:'Cairo',sans-serif; font-weight:800; font-size:1.7rem; line-height:1; margin-top:auto;}
   @media (max-width:400px){ .stat-tile{ height:108px; padding:.85rem .9rem; } }
+  .stat-tile-clickable{ cursor:pointer; transition:transform .1s ease, box-shadow .15s ease; }
+  .stat-tile-clickable:hover{ box-shadow:0 18px 34px -14px rgba(0,0,0,.55); }
+  .stat-tile-clickable:active{ transform:scale(.97); }
   .online-dot{
     position:absolute; inset-inline-end:-1px; bottom:-1px; width:11px; height:11px; border-radius:50%;
     background:var(--green); border:2px solid var(--surface);
@@ -782,17 +785,17 @@ function renderDashboard(){
   const all = S.requests;
   const count = st => all.filter(r=>r.status===st).length;
   const stats = [
-    { label:'مرفوضة', val: count('rejected'), color:'var(--red)', icon:iconXCirc },
-    { label:'مكتملة', val: count('completed'), color:'var(--green)', icon:iconCheck },
-    { label:'حضر أصحابها', val: count('attended')+count('examined'), color:'var(--violet)', icon:iconUsers },
-    { label:'مقبولة', val: count('accepted'), color:'var(--brand)', icon:iconUserCheck },
-    { label:'قيد المراجعة', val: count('sent')+count('new'), color:'var(--blue)', icon:iconClock },
-    { label:'إجمالي الطلبات', val: all.length, color:'var(--brand-dark)', icon:iconGrid },
+    { label:'مرفوضة', val: count('rejected'), color:'var(--red)', icon:iconXCirc, filter:'rejected' },
+    { label:'مكتملة', val: count('completed'), color:'var(--green)', icon:iconCheck, filter:'completed' },
+    { label:'حضر أصحابها', val: count('attended')+count('examined'), color:'var(--violet)', icon:iconUsers, filter:'attended_examined' },
+    { label:'مقبولة', val: count('accepted'), color:'var(--brand)', icon:iconUserCheck, filter:'accepted' },
+    { label:'قيد المراجعة', val: count('sent')+count('new'), color:'var(--blue)', icon:iconClock, filter:'pending_review' },
+    { label:'إجمالي الطلبات', val: all.length, color:'var(--brand-dark)', icon:iconGrid, filter:'' },
   ];
   const recent = all.slice(0,8);
   body.innerHTML = `
     <div class="grid stat-grid mb-6 mt-1">
-      ${stats.map(s=>`<div class="stat-tile" style="background:${s.color}">
+      ${stats.map(s=>`<div class="stat-tile stat-tile-clickable" data-goto-status="${s.filter}" style="background:${s.color}">
         <div class="stat-icon">${s.icon}</div>
         <div class="stat-label">${s.label}</div>
         <div class="stat-num">${s.val}</div>
@@ -804,6 +807,12 @@ function renderDashboard(){
     </div>
     <div class="card overflow-hidden">${requestsTable(recent)}</div>`;
   if(S.role==='hr') $('#goNew').onclick = ()=>setTab('new');
+  document.querySelectorAll('[data-goto-status]').forEach(tile=>{
+    tile.onclick = ()=>{
+      S.filters = { q:'', status: tile.dataset.gotoStatus, company:'', sponsor:'', from:'', to:'' };
+      setTab('log');
+    };
+  });
   wireRequestTableEvents();
 }
 
@@ -1344,7 +1353,12 @@ function renderLog(){
     <div class="card p-4 mb-4">
       <div class="filters-grid">
         <div><label class="field-label">بحث</label><input id="fq" placeholder="اسم، هوية، رقم طلب" value="${esc(S.filters.q)}"></div>
-        <div><label class="field-label">الحالة</label><select id="fstatus"><option value="">الكل</option>${Object.entries(STATUS).map(([k,v])=>`<option value="${k}" ${S.filters.status===k?'selected':''}>${v.label}</option>`).join('')}</select></div>
+        <div><label class="field-label">الحالة</label><select id="fstatus">
+          <option value="" ${S.filters.status===''?'selected':''}>الكل</option>
+          <option value="pending_review" ${S.filters.status==='pending_review'?'selected':''}>قيد المراجعة</option>
+          <option value="attended_examined" ${S.filters.status==='attended_examined'?'selected':''}>حضر أصحابها</option>
+          ${Object.entries(STATUS).map(([k,v])=>`<option value="${k}" ${S.filters.status===k?'selected':''}>${v.label}</option>`).join('')}
+        </select></div>
         <div><label class="field-label">الشركة</label><select id="fcompany"><option value="">الكل</option>${companies.map(c=>`<option ${S.filters.company===c?'selected':''}>${esc(c)}</option>`).join('')}</select></div>
         <div><label class="field-label">الكفيل</label><select id="fsponsor"><option value="">الكل</option>${sponsors.map(c=>`<option ${S.filters.sponsor===c?'selected':''}>${esc(c)}</option>`).join('')}</select></div>
         <div><label class="field-label">من تاريخ</label><input type="date" id="ffrom" value="${S.filters.from}"></div>
@@ -1365,7 +1379,9 @@ function renderLogTable(){
   const f = S.filters;
   let items = S.requests.slice();
   if(f.q){ const q = f.q.toLowerCase(); items = items.filter(r => [r.employeeNameAr,r.employeeNameEn,r.idNumber,r.requestNumber].some(v=> (v||'').toLowerCase().includes(q))); }
-  if(f.status) items = items.filter(r=>r.status===f.status);
+  if(f.status === 'pending_review') items = items.filter(r=> r.status==='sent' || r.status==='new');
+  else if(f.status === 'attended_examined') items = items.filter(r=> r.status==='attended' || r.status==='examined');
+  else if(f.status) items = items.filter(r=>r.status===f.status);
   if(f.company) items = items.filter(r=>r.companyName===f.company);
   if(f.sponsor) items = items.filter(r=>r.sponsorName===f.sponsor);
   if(f.from) items = items.filter(r=> r.createdAt && r.createdAt.slice(0,10) >= f.from);
