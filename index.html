@@ -1499,6 +1499,7 @@ function requestsTable(items, opts={}){
           <div class="flex items-center gap-1.5 justify-end">
             <button class="btn btn-ghost px-2.5 py-1 text-xs" data-openreq="${r.id}">تفاصيل</button>
             ${S.role==='hr' ? `
+            ${nextStageOf(r) ? `<button class="btn btn-ghost px-2.5 py-1 text-xs" data-next="${r.id}" title="نقل إلى: ${STATUS[nextStageOf(r).to].label}" style="color:var(--brand)">${iconNext}</button>` : ''}
             <button class="btn btn-ghost px-2.5 py-1 text-xs" data-wa="${r.id}" title="إرسال رسالة واتساب للموظف" style="color:#25D366">${iconWhatsApp}</button>
             <button class="btn btn-ghost px-2.5 py-1 text-xs" data-edit="${r.id}" title="تعديل">${iconEdit}</button>
             <button class="btn btn-ghost px-2.5 py-1 text-xs" data-del="${r.id}" title="حذف" style="color:var(--red)">${iconTrash}</button>` : ''}
@@ -1550,6 +1551,9 @@ function renderCompleted(){
 function wireRequestTableEvents(){
   document.querySelectorAll('[data-openreq]').forEach(el=>{
     el.onclick = (e)=>{ e.stopPropagation(); openDetailModal(el.dataset.openreq); };
+  });
+  document.querySelectorAll('[data-next]').forEach(el=>{
+    el.onclick = (e)=>{ e.stopPropagation(); advanceRequest(el.dataset.next); };
   });
   document.querySelectorAll('[data-wa]').forEach(el=>{
     el.onclick = (e)=>{ e.stopPropagation(); sendWhatsAppToEmployee(el.dataset.wa); };
@@ -1608,6 +1612,9 @@ function openDetailModal(id){
 
   let actionsHTML = '';
   if(S.role==='reception') actionsHTML = reqActionsHTML(r,'px-4 py-2 text-sm');
+  if(S.role==='hr' && nextStageOf(r)){
+    actionsHTML += `<button class="btn btn-brand px-4 py-2 text-sm" data-action="next" data-id="${r.id}">${iconNext}<span class="mr-1">نقل إلى: ${STATUS[nextStageOf(r).to].label}</span></button>`;
+  }
   if(S.role==='hr'){
     actionsHTML += `<button class="btn btn-ghost px-4 py-2 text-sm" data-action="wa" data-id="${r.id}" style="color:#25D366">${iconWhatsApp}<span class="mr-1">إرسال واتساب</span></button>`;
   }
@@ -1653,9 +1660,27 @@ function openDetailModal(id){
   wrap.onclick = (e)=>{ if(e.target===wrap) wrap.remove(); };
   wrap.querySelector('#closeModalBtn').onclick = ()=>wrap.remove();
   wireStatusActions(wrap, true);
+  wrap.querySelectorAll('[data-action="next"]').forEach(b=>b.onclick=()=>{ wrap.remove(); advanceRequest(b.dataset.id); });
   wrap.querySelectorAll('[data-action="wa"]').forEach(b=>b.onclick=()=>{ wrap.remove(); sendWhatsAppToEmployee(b.dataset.id); });
   wrap.querySelectorAll('[data-action="edit"]').forEach(b=>b.onclick=()=>{ wrap.remove(); openEditModal(b.dataset.id); });
   wrap.querySelectorAll('[data-action="delete"]').forEach(b=>b.onclick=()=>{ wrap.remove(); openDeleteConfirm(b.dataset.id); });
+}
+
+/* ---------------- HR: advance request to the next stage ---------------- */
+const iconNext = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m11 17-5-5 5-5"/><path d="m18 17-5-5 5-5"/></svg>`;
+const NEXT_STAGE = {
+  sent:      { to:'examined',  at:'examinedAt',  by:'examinedBy',  nm:'examinedByName',  msg:'تم الفحص' },
+  examined:  { to:'education', at:'educationAt', by:'educationBy', nm:'educationByName', msg:'بانتظار اجتياز التثقيف' },
+  education: { to:'completed', at:'completedAt', by:'completedBy', nm:'completedByName', msg:'تم إكمال الطلب' },
+};
+function nextStageOf(r){ return NEXT_STAGE[normStatus(r.status)] || null; }
+function advanceRequest(id){
+  const r = S.requests.find(x=>x.id===id); if(!r) return;
+  const n = nextStageOf(r); if(!n) return;
+  const cur = (STATUS[normStatus(r.status)]||STATUS.sent).label;
+  const nxt = STATUS[n.to].label;
+  if(!confirm(`نقل طلب «${r.employeeNameAr}» من «${cur}» إلى «${nxt}»؟`)) return;
+  doTransition(id, n.to, n.at, n.by, n.nm, n.msg);
 }
 
 /* ---------------- HR: WhatsApp message to employee ---------------- */
