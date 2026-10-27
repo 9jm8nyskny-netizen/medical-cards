@@ -139,6 +139,11 @@
   }
   .stat-tile .stat-num{font-family:'Cairo',sans-serif; font-weight:800; font-size:1.7rem; line-height:1; margin-top:auto;}
   @media (max-width:400px){ .stat-tile{ height:108px; padding:.85rem .9rem; } }
+  input.sel-cb{ width:18px; height:18px; padding:0; margin:0; accent-color:var(--brand); cursor:pointer; vertical-align:middle; }
+  td.sel-cell, th.sel-cell{ width:40px; text-align:center; }
+  tr.rt-row.selected td{ background:var(--brand-tint); }
+  .sel-bar{ position:sticky; top:0; z-index:20; display:flex; align-items:center; justify-content:space-between; gap:.5rem; flex-wrap:wrap;
+    background:var(--surface); border:1px solid var(--brand); border-radius:12px; padding:.6rem .8rem; margin-bottom:1rem; box-shadow:0 8px 20px -12px rgba(0,0,0,.5); }
   .stat-tile-clickable{ cursor:pointer; transition:transform .1s ease, box-shadow .15s ease; }
   .stat-tile-clickable:hover{ box-shadow:0 18px 34px -14px rgba(0,0,0,.55); }
   .stat-tile-clickable:active{ transform:scale(.97); }
@@ -339,6 +344,7 @@ const S = {
   filters:{ q:'', status:'', company:'', sponsor:'', from:'', to:'' },
   notifOpen:false,
   completedMonth:null,
+  selectMode:false, selectedIds:new Set(), logVisibleIds:[],
   pendingPhotoURL:null, photoUploadPromise:null,
   editPendingPhotoURL:null, editPhotoUploadPromise:null,
 };
@@ -624,6 +630,7 @@ function buildShell(){
 function closeMobileNav(){ $('#mobileNav').classList.add('hidden'); }
 
 function setTab(tab){
+  if(tab!=='log'){ S.selectMode=false; S.selectedIds.clear(); }
   S.tab = tab;
   document.querySelectorAll('[data-tab]').forEach(n=> n.classList.toggle('active', n.dataset.tab===tab));
   const titles = { dashboard:'لوحة التحكم', new:'إنشاء طلب فحص طبي جديد', log:'سجل الطلبات', inbox:'الطلبات الواردة', users:'إدارة المستخدمين', completed:'طلبات مكتملة' };
@@ -1347,9 +1354,17 @@ function renderLog(){
   const sponsors = Array.from(new Set(S.requests.map(r=>r.sponsorName).filter(Boolean))).sort();
   body.innerHTML = `
     ${S.role==='hr' ? `<div class="flex items-center justify-between mb-4" style="flex-wrap:wrap;gap:.5rem;">
-      <div></div>
+      <button id="toggleSelectBtn" class="btn ${S.selectMode?'btn-brand':'btn-ghost'} px-4 py-2 text-sm">${iconCheck}<span class="mr-1">${S.selectMode?'إنهاء التحديد':'تحديد'}</span></button>
       <button id="openImportBtn" class="btn btn-brand px-4 py-2 text-sm">${iconUpload}<span class="mr-1">استيراد من إكسل</span></button>
-    </div>` : ''}
+    </div>
+    ${S.selectMode ? `<div class="sel-bar" id="selBar">
+      <span class="text-sm font-bold">تم تحديد <span id="selCount">0</span> طلب</span>
+      <div class="flex items-center gap-2" style="flex-wrap:wrap;">
+        <button id="selAllBtn" class="btn btn-ghost px-3 py-1.5 text-xs">تحديد الكل</button>
+        <button id="selNoneBtn" class="btn btn-ghost px-3 py-1.5 text-xs">إلغاء التحديد</button>
+        <button id="bulkDelBtn" class="btn btn-danger px-3 py-1.5 text-xs" disabled>${iconTrash}<span class="mr-1">حذف المحدد</span></button>
+      </div>
+    </div>` : ''}` : ''}
     <div class="card p-4 mb-4">
       <div class="filters-grid">
         <div><label class="field-label">بحث</label><input id="fq" placeholder="اسم، هوية، رقم طلب" value="${esc(S.filters.q)}"></div>
@@ -1366,7 +1381,14 @@ function renderLog(){
       </div>
     </div>
     <div class="card overflow-hidden" id="logTableWrap"></div>`;
-  if(S.role==='hr'){ const btn = $('#openImportBtn'); if(btn) btn.onclick = openImportModal; }
+  if(S.role==='hr'){
+    const btn = $('#openImportBtn'); if(btn) btn.onclick = openImportModal;
+    const tg = $('#toggleSelectBtn');
+    if(tg) tg.onclick = ()=>{ S.selectMode = !S.selectMode; if(!S.selectMode) S.selectedIds.clear(); renderLog(); };
+    const all = $('#selAllBtn'); if(all) all.onclick = ()=>{ S.logVisibleIds.forEach(id=>S.selectedIds.add(id)); renderLogTable(); };
+    const none = $('#selNoneBtn'); if(none) none.onclick = ()=>{ S.selectedIds.clear(); renderLogTable(); };
+    const del = $('#bulkDelBtn'); if(del) del.onclick = openBulkDeleteConfirm;
+  }
   const apply = ()=>{
     S.filters = { q: $('#fq').value.trim(), status: $('#fstatus').value, company: $('#fcompany').value, sponsor: $('#fsponsor').value, from: $('#ffrom').value, to: $('#fto').value };
     renderLogTable();
@@ -1386,14 +1408,85 @@ function renderLogTable(){
   if(f.sponsor) items = items.filter(r=>r.sponsorName===f.sponsor);
   if(f.from) items = items.filter(r=> r.createdAt && r.createdAt.slice(0,10) >= f.from);
   if(f.to) items = items.filter(r=> r.createdAt && r.createdAt.slice(0,10) <= f.to);
-  wrap.innerHTML = requestsTable(items);
+  S.logVisibleIds = items.map(r=>r.id);
+  const existing = new Set(S.requests.map(r=>r.id));
+  S.selectedIds.forEach(id=>{ if(!existing.has(id)) S.selectedIds.delete(id); });
+  wrap.innerHTML = requestsTable(items, {selectable:true});
   wireRequestTableEvents();
+  wireSelection();
+  updateSelectionBar();
 }
-function requestsTable(items){
+function wireSelection(){
+  if(!(S.role==='hr' && S.selectMode)) return;
+  document.querySelectorAll('tr[data-selrow]').forEach(tr=>{
+    tr.onclick = ()=>{
+      const id = tr.dataset.selrow;
+      const on = !S.selectedIds.has(id);
+      if(on) S.selectedIds.add(id); else S.selectedIds.delete(id);
+      tr.classList.toggle('selected', on);
+      const cb = tr.querySelector('input[data-sel]'); if(cb) cb.checked = on;
+      updateSelectionBar();
+    };
+  });
+  const head = $('#selAllHead');
+  if(head) head.onchange = ()=>{
+    if(head.checked) S.logVisibleIds.forEach(id=>S.selectedIds.add(id)); else S.logVisibleIds.forEach(id=>S.selectedIds.delete(id));
+    renderLogTable();
+  };
+}
+function updateSelectionBar(){
+  if(!S.selectMode) return;
+  const n = S.selectedIds.size;
+  const c = $('#selCount'); if(c) c.textContent = n;
+  const d = $('#bulkDelBtn'); if(d) d.disabled = n===0;
+  const head = $('#selAllHead');
+  if(head) head.checked = S.logVisibleIds.length>0 && S.logVisibleIds.every(id=>S.selectedIds.has(id));
+}
+function openBulkDeleteConfirm(){
+  const ids = Array.from(S.selectedIds);
+  if(!ids.length) return;
+  const reqs = ids.map(id=>S.requests.find(x=>x.id===id)).filter(Boolean);
+  const wrap = el('div','modal-backdrop');
+  wrap.innerHTML = `
+    <div class="card p-5 w-full max-w-sm fade-in">
+      <h3 class="font-bold mb-1" style="color:var(--red)">حذف ${reqs.length} طلب</h3>
+      <p class="text-xs mb-3" style="color:var(--ink-soft)">سيتم حذف الطلبات المحددة نهائياً، ولا يمكن التراجع عن هذا الإجراء.</p>
+      <div class="text-xs mb-4" style="color:var(--ink-soft);max-height:120px;overflow:auto;">
+        ${reqs.slice(0,8).map(r=>`<div>• ${esc(r.employeeNameAr)} — ${esc(r.requestNumber)}</div>`).join('')}
+        ${reqs.length>8 ? `<div>… و${reqs.length-8} طلب آخر</div>` : ''}
+      </div>
+      <div id="bulkDelStatus" class="text-xs mb-3" style="color:var(--ink-soft)"></div>
+      <div class="flex gap-2">
+        <button id="bulkDelConfirm" class="btn btn-danger px-4 py-2 text-sm flex-1">${iconTrash}<span class="mr-1">تأكيد حذف الكل</span></button>
+        <button id="bulkDelCancel" class="btn btn-ghost px-4 py-2 text-sm">إلغاء</button>
+      </div>
+    </div>`;
+  document.body.appendChild(wrap);
+  wrap.querySelector('#bulkDelCancel').onclick = ()=>wrap.remove();
+  wrap.onclick = (e)=>{ if(e.target===wrap) wrap.remove(); };
+  wrap.querySelector('#bulkDelConfirm').onclick = async ()=>{
+    const btn = wrap.querySelector('#bulkDelConfirm'); btn.disabled = true;
+    const st = wrap.querySelector('#bulkDelStatus');
+    let done = 0, failed = 0; const deletedNums = [];
+    for(const r of reqs){
+      try{ await deleteDoc(doc(db,'requests',r.id)); done++; deletedNums.push(r.requestNumber); S.selectedIds.delete(r.id); }
+      catch(e){ console.error('bulk delete failed for', r.id, e); failed++; }
+      st.textContent = `جارِ الحذف… ${done+failed} / ${reqs.length}`;
+    }
+    if(done){ try{ await addLog(null, null, `تم حذف ${done} طلب (حذف جماعي)`, deletedNums.join('، ')); }catch(e){ console.warn('bulk delete log failed', e); } }
+    if(failed) toast(`تم حذف ${done} وتعذّر حذف ${failed} — تأكد من صلاحيات الحذف`, 'error'); else toast(`تم حذف ${done} طلب`);
+    wrap.remove();
+    if(!S.selectedIds.size) S.selectMode = false;
+    if(S.tab==='log') renderLog();
+  };
+}
+function requestsTable(items, opts={}){
   if(!items.length) return emptyState('لا توجد طلبات مطابقة', 'جرّب تعديل عوامل البحث أعلاه.');
+  const sel = !!opts.selectable && S.role==='hr' && S.selectMode;
   return `
   <div class="scrollx"><table class="rtable">
     <thead><tr>
+      ${sel ? '<th class="sel-cell"><input type="checkbox" class="sel-cb" id="selAllHead" title="تحديد الكل"></th>' : ''}
       <th>الموظف</th><th>رقم الطلب</th>
       <th class="hide-sm">الهوية</th><th class="hide-sm">الكفيل</th><th class="hide-sm">الشركة</th>
       <th>الحالة</th><th class="hide-sm">تاريخ الطلب</th><th class="hide-sm"></th>
@@ -1404,7 +1497,9 @@ function requestsTable(items){
         const photo = r.photoURL
           ? `<img src="${r.photoURL}" class="avatar" style="width:30px;height:30px">`
           : `<div class="avatar flex items-center justify-center" style="width:30px;height:30px;color:var(--ink-soft)">${iconUser}</div>`;
-        return `<tr class="rt-row" data-openreq="${r.id}">
+        const isSel = sel && S.selectedIds.has(r.id);
+        return `<tr class="rt-row${isSel?' selected':''}" ${sel ? `data-selrow="${r.id}"` : `data-openreq="${r.id}"`}>
+        ${sel ? `<td class="sel-cell"><input type="checkbox" class="sel-cb" data-sel="${r.id}" ${isSel?'checked':''}></td>` : ''}
         <td class="rt-emp">${photo}<span class="font-bold">${esc(r.employeeNameAr)}</span></td>
         <td>${esc(r.requestNumber)}</td>
         <td class="hide-sm">${esc(r.idNumber)}</td>
