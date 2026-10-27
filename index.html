@@ -842,6 +842,7 @@ function renderNewRequest(){
             <div><label class="field-label">رقم الهوية / الإقامة *</label><input required name="idNumber" inputmode="numeric" placeholder="1XXXXXXXXX"></div>
             <div><label class="field-label">نوع الفحص الطبي</label><input name="examType" placeholder="مثال: فحص عمالة، فحص دوري"></div>
           </div>
+          <div><label class="field-label">رقم جوال الموظف (واتساب)</label><input name="employeePhone" inputmode="tel" dir="ltr" style="text-align:right" placeholder="05XXXXXXXX"></div>
           <div>
             <label class="field-label">اسم الشركة *</label><input required list="companiesList" name="companyName" placeholder="اسم الشركة"><datalist id="companiesList"></datalist>
           </div>
@@ -917,6 +918,7 @@ function renderNewRequest(){
         employeeNameAr: data.employeeNameAr.trim(),
         employeeNameEn: (data.employeeNameEn||'').trim(),
         idNumber: data.idNumber.trim(),
+        employeePhone: (data.employeePhone||'').trim(),
         photoURL: S.pendingPhotoURL || null,
         companyName: data.companyName.trim(),
         billingCompany: data.billingCompany.trim(),
@@ -960,9 +962,10 @@ function normalizeHeader(h){
     .replace(/[_\-\/]/g,' ')
     .replace(/\s+/g,' ').trim();
 }
-const IMPORT_FIELD_LABELS = { employeeNameAr:'اسم الموظف', employeeNameEn:'الاسم بالإنجليزي', idNumber:'رقم الهوية', companyName:'الشركة', billingCompany:'جهة الفاتورة', examType:'نوع الفحص', notes:'ملاحظات' };
+const IMPORT_FIELD_LABELS = { employeeNameAr:'اسم الموظف', employeePhone:'رقم الجوال', employeeNameEn:'الاسم بالإنجليزي', idNumber:'رقم الهوية', companyName:'الشركة', billingCompany:'جهة الفاتورة', examType:'نوع الفحص', notes:'ملاحظات' };
 const IMPORT_FIELD_SYNONYMS = {
   employeeNameAr: ['اسم الموظف','الموظف','اسم الموظف بالعربي','اسم الموظف عربي','الاسم','اسم','name','employee','employee name','full name'],
+  employeePhone: ['رقم الجوال','الجوال','جوال','رقم الموظف','رقم الهاتف','الهاتف','هاتف','رقم الموبايل','موبايل','واتساب','واتس اب','رقم الواتساب','mobile','mobile number','phone','phone number','whatsapp','tel'],
   employeeNameEn: ['الاسم بالانجليزي','اسم الموظف بالانجليزي','اسم انجليزي','name en','english name','employee name en'],
   idNumber: ['رقم الهويه','الهويه','هويه','رقم الاقامه','الاقامه','اقامه','رقم الهويه الاقامه','id','id number','iqama','national id','identity number'],
   companyName: ['الشركه','شركه','اسم الشركه','جهه العمل','company','company name','employer'],
@@ -970,9 +973,9 @@ const IMPORT_FIELD_SYNONYMS = {
   examType: ['نوع الفحص','الفحص','نوع الكشف','exam type','exam'],
   notes: ['ملاحظات','ملاحظه','notes','note'],
 };
-function matchColumn(headers, field){
+function matchColumn(headers, field, used=[]){
   const syns = IMPORT_FIELD_SYNONYMS[field];
-  const normHeaders = headers.map(h=>({orig:h, norm:normalizeHeader(h)}));
+  const normHeaders = headers.filter(h=>!used.includes(h)).map(h=>({orig:h, norm:normalizeHeader(h)})).filter(h=>h.norm);
   for(const s of syns){ const sn = normalizeHeader(s); const hit = normHeaders.find(h=>h.norm===sn); if(hit) return hit.orig; }
   for(const s of syns){ const sn = normalizeHeader(s); const hit = normHeaders.find(h=>h.norm.includes(sn) || sn.includes(h.norm)); if(hit) return hit.orig; }
   return null;
@@ -1016,7 +1019,11 @@ function openImportModal(){
         if(!rows.length){ statusEl.innerHTML = `<span style="color:var(--red)">الملف فارغ أو بدون بيانات قابلة للقراءة</span>`; return; }
         const headers = Object.keys(rows[0]);
         const mapping = {};
-        Object.keys(IMPORT_FIELD_LABELS).forEach(f=>{ mapping[f] = matchColumn(headers, f); });
+        const usedCols = [];
+        ['employeePhone', ...Object.keys(IMPORT_FIELD_LABELS).filter(k=>k!=='employeePhone')].forEach(f=>{
+          mapping[f] = matchColumn(headers, f, usedCols);
+          if(mapping[f]) usedCols.push(mapping[f]);
+        });
 
         parsedRows = [];
         let skipped = 0;
@@ -1027,7 +1034,7 @@ function openImportModal(){
           if(!employeeNameAr || !idNumber){ skipped++; return; }
           const companyName = get('companyName') || '—';
           parsedRows.push({
-            employeeNameAr, employeeNameEn: get('employeeNameEn'), idNumber,
+            employeeNameAr, employeeNameEn: get('employeeNameEn'), idNumber, employeePhone: get('employeePhone'),
             companyName,
             billingCompany: get('billingCompany') || companyName,
             examType: get('examType'), notes: get('notes'),
@@ -1069,7 +1076,7 @@ function openImportModal(){
         const docData = {
           requestNumber: reqNumber,
           employeeNameAr: row.employeeNameAr, employeeNameEn: row.employeeNameEn || '',
-          idNumber: row.idNumber, photoURL: null,
+          idNumber: row.idNumber, employeePhone: row.employeePhone || '', photoURL: null,
           companyName: row.companyName, billingCompany: row.billingCompany,
           examType: row.examType || '', notes: row.notes || '',
           status: 'sent', rejectionReason: '',
@@ -1492,6 +1499,7 @@ function requestsTable(items, opts={}){
           <div class="flex items-center gap-1.5 justify-end">
             <button class="btn btn-ghost px-2.5 py-1 text-xs" data-openreq="${r.id}">تفاصيل</button>
             ${S.role==='hr' ? `
+            <button class="btn btn-ghost px-2.5 py-1 text-xs" data-wa="${r.id}" title="إرسال رسالة واتساب للموظف" style="color:#25D366">${iconWhatsApp}</button>
             <button class="btn btn-ghost px-2.5 py-1 text-xs" data-edit="${r.id}" title="تعديل">${iconEdit}</button>
             <button class="btn btn-ghost px-2.5 py-1 text-xs" data-del="${r.id}" title="حذف" style="color:var(--red)">${iconTrash}</button>` : ''}
           </div>
@@ -1542,6 +1550,9 @@ function renderCompleted(){
 function wireRequestTableEvents(){
   document.querySelectorAll('[data-openreq]').forEach(el=>{
     el.onclick = (e)=>{ e.stopPropagation(); openDetailModal(el.dataset.openreq); };
+  });
+  document.querySelectorAll('[data-wa]').forEach(el=>{
+    el.onclick = (e)=>{ e.stopPropagation(); sendWhatsAppToEmployee(el.dataset.wa); };
   });
   document.querySelectorAll('[data-edit]').forEach(el=>{
     el.onclick = (e)=>{ e.stopPropagation(); openEditModal(el.dataset.edit); };
@@ -1597,6 +1608,9 @@ function openDetailModal(id){
 
   let actionsHTML = '';
   if(S.role==='reception') actionsHTML = reqActionsHTML(r,'px-4 py-2 text-sm');
+  if(S.role==='hr'){
+    actionsHTML += `<button class="btn btn-ghost px-4 py-2 text-sm" data-action="wa" data-id="${r.id}" style="color:#25D366">${iconWhatsApp}<span class="mr-1">إرسال واتساب</span></button>`;
+  }
   if(S.role==='hr' || S.role==='sales'){
     actionsHTML += `<button class="btn btn-ghost px-4 py-2 text-sm" data-action="edit" data-id="${r.id}">${iconEdit}<span class="mr-1">تعديل الطلب</span></button>`;
   }
@@ -1616,7 +1630,8 @@ function openDetailModal(id){
       <div class="grid grid-cols-2 gap-y-2 text-sm mb-3">
         <div><span style="color:var(--ink-soft)">رقم الطلب: </span><b>${esc(r.requestNumber)}</b></div>
         <div><span style="color:var(--ink-soft)">الهوية: </span>${esc(r.idNumber)}</div>
-        <div><span style="color:var(--ink-soft)">الشركة: </span>${esc(r.companyName)}</div>
+        <div><span style="color:var(--ink-soft)">الجوال: </span><span dir="ltr">${esc(r.employeePhone||'—')}</span></div>
+        <div class="col-span-2"><span style="color:var(--ink-soft)">الشركة: </span>${esc(r.companyName)}</div>
         <div class="col-span-2"><span style="color:var(--ink-soft)">فاتورة باسم: </span>${esc(r.billingCompany)}</div>
         <div class="col-span-2"><span style="color:var(--ink-soft)">نوع الفحص: </span>${esc(r.examType||'—')}</div>
         ${r.notes? `<div class="col-span-2"><span style="color:var(--ink-soft)">ملاحظات: </span>${esc(r.notes)}</div>`:''}
@@ -1638,8 +1653,82 @@ function openDetailModal(id){
   wrap.onclick = (e)=>{ if(e.target===wrap) wrap.remove(); };
   wrap.querySelector('#closeModalBtn').onclick = ()=>wrap.remove();
   wireStatusActions(wrap, true);
+  wrap.querySelectorAll('[data-action="wa"]').forEach(b=>b.onclick=()=>{ wrap.remove(); sendWhatsAppToEmployee(b.dataset.id); });
   wrap.querySelectorAll('[data-action="edit"]').forEach(b=>b.onclick=()=>{ wrap.remove(); openEditModal(b.dataset.id); });
   wrap.querySelectorAll('[data-action="delete"]').forEach(b=>b.onclick=()=>{ wrap.remove(); openDeleteConfirm(b.dataset.id); });
+}
+
+/* ---------------- HR: WhatsApp message to employee ---------------- */
+function normalizePhone(p){
+  let d = String(p||'')
+    .replace(/[٠-٩]/g, c=>'٠١٢٣٤٥٦٧٨٩'.indexOf(c))
+    .replace(/[۰-۹]/g, c=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(c))
+    .replace(/\D/g,'');
+  if(!d) return '';
+  if(d.startsWith('00')) d = d.slice(2);
+  if(d.startsWith('966')){ if(d.startsWith('9660')) d = '966'+d.slice(4); return d; }
+  if(d.length===10 && d.startsWith('05')) return '966'+d.slice(1);
+  if(d.length===9 && d.startsWith('5')) return '966'+d;
+  return d; // رقم بمفتاح دولة آخر يُترك كما أُدخل
+}
+function buildWaMessage(r){
+  return `${r.employeeNameAr}
+
+السلام عليكم ورحمة الله وبركاته،
+معك خالد وليد عبدالمحسن القريني من قسم الموارد البشرية.
+يرجى التوجه إلى المركز الصحي لإجراء الفحص الطبي الخاص بإصدار كرت البلدية، مع إحضار صورة شخصية مقاس (4×6).
+في حال عدم الالتزام، سيتحمل الموظف مسؤولية أي مخالفات تصدر من البلدية نتيجة لذلك.
+شاكرين تعاونكم.
+
+Dear Employee,
+This is Khalid Waleed Abdulmohsen Al-Quraini from the HR Department.
+Please visit the health center for the medical examination required to issue your Municipality Health Card, and bring a personal photo (4×6 cm).
+Failure to comply will make you responsible for any resulting municipal fines.
+
+🕘 مواعيد المستشفى (جدة):
+9:00 ص – 3:00 م
+🕘 Hospital Hours (Jeddah):
+9:00 AM – 3:00 PM
+
+https://maps.app.goo.gl/sU2WdQ8KntPsuvMfA
+Thank you for your cooperation.`;
+}
+function openWhatsApp(r, phoneRaw){
+  const num = normalizePhone(phoneRaw);
+  if(num.length < 10 || num.length > 15){ toast('رقم الجوال غير صالح — تحقق منه','error'); return false; }
+  window.open(`https://wa.me/${num}?text=${encodeURIComponent(buildWaMessage(r))}`, '_blank', 'noopener');
+  try{ addLog(r.id, r.requestNumber, 'تم فتح رسالة واتساب للموظف', `بواسطة ${S.me.name||''}`); }catch(e){}
+  return true;
+}
+function sendWhatsAppToEmployee(id){
+  const r = S.requests.find(x=>x.id===id); if(!r) return;
+  if(normalizePhone(r.employeePhone)) openWhatsApp(r, r.employeePhone);
+  else openPhonePrompt(r);
+}
+function openPhonePrompt(r){
+  const wrap = el('div','modal-backdrop');
+  wrap.innerHTML = `
+    <div class="card p-5 w-full max-w-sm fade-in">
+      <h3 class="font-bold mb-1">رقم جوال الموظف</h3>
+      <p class="text-xs mb-3" style="color:var(--ink-soft)">${esc(r.employeeNameAr)} — لا يوجد رقم مسجّل. أدخل الرقم ليُحفظ ضمن بيانات الموظف وتُفتح المحادثة.</p>
+      <input id="waPhoneInput" inputmode="tel" dir="ltr" style="text-align:right" placeholder="05XXXXXXXX">
+      <div class="flex gap-2 mt-4">
+        <button id="waPhoneSave" class="btn btn-brand px-4 py-2 text-sm flex-1">حفظ وفتح واتساب</button>
+        <button id="waPhoneCancel" class="btn btn-ghost px-4 py-2 text-sm">إلغاء</button>
+      </div>
+    </div>`;
+  document.body.appendChild(wrap);
+  wrap.onclick = (e)=>{ if(e.target===wrap) wrap.remove(); };
+  wrap.querySelector('#waPhoneCancel').onclick = ()=>wrap.remove();
+  const input = wrap.querySelector('#waPhoneInput'); input.focus();
+  const save = ()=>{
+    const v = input.value.trim();
+    if(!openWhatsApp(r, v)) return;
+    updateDoc(doc(db,'requests',r.id), { employeePhone: v, updatedAt: nowISO() }).catch(err=>{ console.error(err); toast('تعذّر حفظ رقم الجوال','error'); });
+    wrap.remove();
+  };
+  wrap.querySelector('#waPhoneSave').onclick = save;
+  input.addEventListener('keydown', e=>{ if(e.key==='Enter') save(); });
 }
 
 /* ---------------- HR: Full Edit modal ---------------- */
@@ -1669,6 +1758,7 @@ function openEditModal(id){
           <div><label class="field-label">رقم الهوية / الإقامة *</label><input required name="idNumber" value="${esc(r.idNumber)}"></div>
           <div><label class="field-label">نوع الفحص الطبي</label><input name="examType" value="${esc(r.examType||'')}"></div>
         </div>
+        <div><label class="field-label">رقم جوال الموظف (واتساب)</label><input name="employeePhone" inputmode="tel" dir="ltr" style="text-align:right" placeholder="05XXXXXXXX" value="${esc(r.employeePhone||'')}"></div>
         <div>
           <label class="field-label">اسم الشركة *</label><input required list="editCompaniesList" name="companyName" value="${esc(r.companyName)}"><datalist id="editCompaniesList"></datalist>
         </div>
@@ -1741,6 +1831,7 @@ function openEditModal(id){
         employeeNameAr: data.employeeNameAr.trim(),
         employeeNameEn: (data.employeeNameEn||'').trim(),
         idNumber: data.idNumber.trim(),
+        employeePhone: (data.employeePhone||'').trim(),
         companyName: data.companyName.trim(),
         billingCompany: data.billingCompany.trim(),
         examType: (data.examType||'').trim(),
