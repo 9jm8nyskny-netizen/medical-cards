@@ -316,14 +316,15 @@ setPersistence(auth, browserSessionPersistence).catch(()=>{});
 
 /* ============================= CONFIG ============================= */
 const STATUS = {
-  new:       { label: 'طلب جديد',              tint:'var(--amber-tint)', fg:'var(--amber)' },
-  sent:      { label: 'بانتظار مراجعة المركز',   tint:'var(--blue-tint)',  fg:'var(--blue)'  },
-  accepted:  { label: 'تم قبول الطلب',           tint:'var(--brand-tint)', fg:'var(--brand)' },
-  rejected:  { label: 'تم رفض الطلب',            tint:'var(--red-tint)',   fg:'var(--red)'   },
-  attended:  { label: 'حضر الموظف',              tint:'var(--violet-tint)',fg:'var(--violet)'},
-  examined:  { label: 'تم الفحص',                tint:'var(--green-tint)', fg:'var(--green)' },
-  completed: { label: 'مكتمل',                   tint:'var(--teal-solid)', fg:'#fff'         },
+  sent:      { label: 'بانتظار زيارة المركز',    tint:'var(--blue-tint)',   fg:'var(--blue)'   },
+  examined:  { label: 'تم الفحص',                 tint:'var(--violet-tint)', fg:'var(--violet)' },
+  education: { label: 'بانتظار اجتياز التثقيف',   tint:'var(--amber-tint)',  fg:'var(--amber)'  },
+  completed: { label: 'تم',                       tint:'var(--green-tint)',  fg:'var(--green)'  },
+  rejected:  { label: 'تم رفض الطلب',             tint:'var(--red-tint)',    fg:'var(--red)'    },
 };
+/* حالات قديمة (قبل تغيير مراحل الطلب) تُعرض تلقائياً كأقرب مرحلة جديدة */
+const LEGACY_STATUS_MAP = { new:'sent', accepted:'sent', attended:'sent' };
+const normStatus = s => LEGACY_STATUS_MAP[s] || s;
 const ROLE_LABEL = { hr: 'مسؤول الموارد البشرية', reception: 'استقبال المركز الطبي', sales: 'موظف المبيعات' };
 const REQTYPE = {
   new:     { label: 'جديد',  tint:'var(--blue-tint)',   fg:'var(--blue)'   },
@@ -642,7 +643,7 @@ function setTab(tab){
 function subscribeAll(){
   const reqQ = query(collection(db,'requests'), orderBy('createdAt','desc'), limit(1000));
   S.unsubs.push(onSnapshot(reqQ, snap=>{
-    S.requests = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+    S.requests = snap.docs.map(d=>{ const x = d.data(); return { id:d.id, ...x, status: normStatus(x.status) }; });
     renderTab(); renderNotifPanel();
   }, e=>console.error('requests sub', e)));
 
@@ -786,12 +787,12 @@ function renderDashboard(){
   const all = S.requests;
   const count = st => all.filter(r=>r.status===st).length;
   const stats = [
-    { label:'مرفوضة', val: count('rejected'), color:'var(--red)', icon:iconXCirc, filter:'rejected' },
-    { label:'مكتملة', val: count('completed'), color:'var(--green)', icon:iconCheck, filter:'completed' },
-    { label:'حضر أصحابها', val: count('attended')+count('examined'), color:'var(--violet)', icon:iconUsers, filter:'attended_examined' },
-    { label:'مقبولة', val: count('accepted'), color:'var(--brand)', icon:iconUserCheck, filter:'accepted' },
-    { label:'قيد المراجعة', val: count('sent')+count('new'), color:'var(--blue)', icon:iconClock, filter:'pending_review' },
     { label:'إجمالي الطلبات', val: all.length, color:'var(--brand-dark)', icon:iconGrid, filter:'' },
+    { label:'بانتظار زيارة المركز', val: count('sent'), color:'var(--blue)', icon:iconClock, filter:'sent' },
+    { label:'تم الفحص', val: count('examined'), color:'var(--violet)', icon:iconUserCheck, filter:'examined' },
+    { label:'بانتظار اجتياز التثقيف', val: count('education'), color:'var(--amber)', icon:iconUsers, filter:'education' },
+    { label:'تم', val: count('completed'), color:'var(--green)', icon:iconCheck, filter:'completed' },
+    { label:'مرفوضة', val: count('rejected'), color:'var(--red)', icon:iconXCirc, filter:'rejected' },
   ];
   const recent = all.slice(0,8);
   body.innerHTML = `
@@ -1094,10 +1095,10 @@ function openImportModal(){
 /* ---------------- Reception: Inbox ---------------- */
 function renderInbox(){
   const body = $('#pageBody'); if(!body) return;
-  const items = S.requests.filter(r=>r.status==='sent');
+  const items = S.requests.filter(r=>r.status==='sent' || r.status==='examined' || r.status==='education');
   body.innerHTML = items.length
     ? `<div class="grid cards-grid">${items.map(r=>requestCard(r)).join('')}</div>`
-    : emptyState('لا توجد طلبات واردة حالياً', 'ستظهر هنا الطلبات فور إنشائها من الموارد البشرية.');
+    : emptyState('لا توجد طلبات قيد المتابعة حالياً', 'ستظهر هنا الطلبات فور إنشائها من الموارد البشرية، وتبقى حتى تكتمل.');
   wireCardEvents();
 }
 function requestCard(r){
@@ -1122,33 +1123,33 @@ function requestCard(r){
       <div class="col-span-2"><span style="color:var(--ink-soft)">فاتورة باسم: </span>${esc(r.billingCompany)}</div>
       <div class="col-span-2"><span style="color:var(--ink-soft)">تاريخ الطلب: </span>${fmtDT(r.createdAt)}</div>
     </div>
-    <div class="flex flex-wrap gap-2">
-      <button class="btn btn-brand px-3 py-1.5 text-xs flex-1" data-action="accept" data-id="${r.id}">قبول الطلب</button>
-      <button class="btn btn-danger px-3 py-1.5 text-xs flex-1" data-action="reject" data-id="${r.id}">رفض الطلب</button>
-    </div>
+    ${reqActionsHTML(r,'px-3 py-1.5 text-xs flex-1') ? `<div class="flex flex-wrap gap-2">${reqActionsHTML(r,'px-3 py-1.5 text-xs flex-1')}</div>` : ''}
   </div>`;
 }
-function wireCardEvents(){
-  document.querySelectorAll('[data-action="accept"]').forEach(b=>b.onclick=()=>doAccept(b.dataset.id));
-  document.querySelectorAll('[data-action="reject"]').forEach(b=>b.onclick=()=>openRejectModal(b.dataset.id));
+/* أزرار الانتقال بين المراحل (للاستقبال): زيارة المركز ← تم الفحص ← اجتياز التثقيف ← تم */
+function reqActionsHTML(r, cls){
+  const b = (action, label, kind)=>`<button class="btn ${kind||'btn-brand'} ${cls}" data-action="${action}" data-id="${r.id}">${label}</button>`;
+  if(r.status==='sent') return b('examine','تم الفحص') + b('reject','رفض الطلب','btn-danger');
+  if(r.status==='examined') return b('education','بانتظار اجتياز التثقيف');
+  if(r.status==='education') return b('complete','تم اجتياز التثقيف');
+  return '';
 }
-async function doAccept(id){
-  const r = S.requests.find(x=>x.id===id); if(!r) return;
-  try{
-    await updateDoc(doc(db,'requests',id), { status:'accepted', acceptedAt:nowISO(), acceptedBy:S.me.uid, acceptedByName:S.me.name||'', updatedAt:nowISO() });
-    await addLog(id, r.requestNumber, 'تم قبول الطلب', '');
-    await notify({ toUserId:r.createdBy, requestId:id, requestNumber:r.requestNumber, message:`تم قبول طلب الفحص رقم ${r.requestNumber} — ${r.employeeNameAr}` });
-    toast('تم قبول الطلب');
-  }catch(e){ console.error(e); toast('تعذّر تنفيذ العملية','error'); }
+function wireStatusActions(root, inModal){
+  const T = (sel, status, at, by, nm, msg)=> root.querySelectorAll(`[data-action="${sel}"]`).forEach(b=>b.onclick=()=>doTransition(b.dataset.id,status,at,by,nm,msg));
+  T('examine','examined','examinedAt','examinedBy','examinedByName','تم الفحص');
+  T('education','education','educationAt','educationBy','educationByName','بانتظار اجتياز التثقيف');
+  T('complete','completed','completedAt','completedBy','completedByName','تم إكمال الطلب');
+  root.querySelectorAll('[data-action="reject"]').forEach(b=>b.onclick=()=>{ if(inModal) closeModal(); openRejectModal(b.dataset.id); });
 }
+function wireCardEvents(){ wireStatusActions(document, false); }
 async function doTransition(id, status, atField, byField, nameField, msg){
   const r = S.requests.find(x=>x.id===id); if(!r) return;
   try{
     await updateDoc(doc(db,'requests',id), { status, [atField]:nowISO(), [byField]:S.me.uid, [nameField]:S.me.name||'', updatedAt:nowISO() });
     await addLog(id, r.requestNumber, msg, '');
-    if(status==='completed'){
-      await notify({ toUserId:r.createdBy, requestId:id, requestNumber:r.requestNumber, message:`اكتمل طلب الفحص رقم ${r.requestNumber} — ${r.employeeNameAr}` });
-    }
+    const label = (STATUS[status] && STATUS[status].label) || status;
+    await notify({ toUserId:r.createdBy, requestId:id, requestNumber:r.requestNumber,
+      message: status==='completed' ? `اكتمل طلب الفحص رقم ${r.requestNumber} — ${r.employeeNameAr}` : `تحديث حالة طلب الفحص رقم ${r.requestNumber} — ${r.employeeNameAr}: ${label}` });
     toast(msg); closeModal();
   }catch(e){ console.error(e); toast('تعذّر تنفيذ العملية','error'); }
 }
@@ -1357,8 +1358,6 @@ function renderLog(){
         <div><label class="field-label">بحث</label><input id="fq" placeholder="اسم، هوية، رقم طلب" value="${esc(S.filters.q)}"></div>
         <div><label class="field-label">الحالة</label><select id="fstatus">
           <option value="" ${S.filters.status===''?'selected':''}>الكل</option>
-          <option value="pending_review" ${S.filters.status==='pending_review'?'selected':''}>قيد المراجعة</option>
-          <option value="attended_examined" ${S.filters.status==='attended_examined'?'selected':''}>حضر أصحابها</option>
           ${Object.entries(STATUS).map(([k,v])=>`<option value="${k}" ${S.filters.status===k?'selected':''}>${v.label}</option>`).join('')}
         </select></div>
         <div><label class="field-label">الشركة</label><select id="fcompany"><option value="">الكل</option>${companies.map(c=>`<option ${S.filters.company===c?'selected':''}>${esc(c)}</option>`).join('')}</select></div>
@@ -1387,9 +1386,7 @@ function renderLogTable(){
   const f = S.filters;
   let items = S.requests.slice();
   if(f.q){ const q = f.q.toLowerCase(); items = items.filter(r => [r.employeeNameAr,r.employeeNameEn,r.idNumber,r.requestNumber].some(v=> (v||'').toLowerCase().includes(q))); }
-  if(f.status === 'pending_review') items = items.filter(r=> r.status==='sent' || r.status==='new');
-  else if(f.status === 'attended_examined') items = items.filter(r=> r.status==='attended' || r.status==='examined');
-  else if(f.status) items = items.filter(r=>r.status===f.status);
+  if(f.status) items = items.filter(r=>r.status===f.status);
   if(f.company) items = items.filter(r=>r.companyName===f.company);
   if(f.from) items = items.filter(r=> r.createdAt && r.createdAt.slice(0,10) >= f.from);
   if(f.to) items = items.filter(r=> r.createdAt && r.createdAt.slice(0,10) <= f.to);
@@ -1599,12 +1596,7 @@ function openDetailModal(id){
   const photo = r.photoURL ? `<img src="${r.photoURL}" class="avatar" style="width:64px;height:64px">` : `<div class="avatar flex items-center justify-center" style="width:64px;height:64px;color:var(--ink-soft)">${iconUser}</div>`;
 
   let actionsHTML = '';
-  if(S.role==='reception'){
-    if(r.status==='sent') actionsHTML = `<button class="btn btn-brand px-4 py-2 text-sm" data-action="accept" data-id="${r.id}">قبول الطلب</button><button class="btn btn-danger px-4 py-2 text-sm" data-action="reject" data-id="${r.id}">رفض الطلب</button>`;
-    else if(r.status==='accepted') actionsHTML = `<button class="btn btn-brand px-4 py-2 text-sm" data-action="checkin" data-id="${r.id}">تسجيل حضور الموظف</button>`;
-    else if(r.status==='attended') actionsHTML = `<button class="btn btn-brand px-4 py-2 text-sm" data-action="examine" data-id="${r.id}">تم الفحص</button>`;
-    else if(r.status==='examined') actionsHTML = `<button class="btn btn-brand px-4 py-2 text-sm" data-action="complete" data-id="${r.id}">إكمال الطلب</button>`;
-  }
+  if(S.role==='reception') actionsHTML = reqActionsHTML(r,'px-4 py-2 text-sm');
   if(S.role==='hr' || S.role==='sales'){
     actionsHTML += `<button class="btn btn-ghost px-4 py-2 text-sm" data-action="edit" data-id="${r.id}">${iconEdit}<span class="mr-1">تعديل الطلب</span></button>`;
   }
@@ -1635,6 +1627,7 @@ function openDetailModal(id){
         ${r.acceptedAt? `<div>تاريخ القبول: ${fmtDT(r.acceptedAt)} — بواسطة ${esc(r.acceptedByName||'—')}</div>`:''}
         ${r.checkinAt? `<div>تاريخ حضور الموظف: ${fmtDT(r.checkinAt)}</div>`:''}
         ${r.examinedAt? `<div>تاريخ الفحص: ${fmtDT(r.examinedAt)}</div>`:''}
+        ${r.educationAt? `<div>تاريخ الانتقال لانتظار التثقيف: ${fmtDT(r.educationAt)}</div>`:''}
         ${r.completedAt? `<div>تاريخ الإكمال: ${fmtDT(r.completedAt)}</div>`:''}
         ${r.rejectedAt? `<div>تاريخ الرفض: ${fmtDT(r.rejectedAt)} — بواسطة ${esc(r.rejectedByName||'—')}</div>`:''}
       </div>
@@ -1644,11 +1637,7 @@ function openDetailModal(id){
   document.body.appendChild(wrap);
   wrap.onclick = (e)=>{ if(e.target===wrap) wrap.remove(); };
   wrap.querySelector('#closeModalBtn').onclick = ()=>wrap.remove();
-  wrap.querySelectorAll('[data-action="accept"]').forEach(b=>b.onclick=()=>{ doAccept(b.dataset.id); wrap.remove(); });
-  wrap.querySelectorAll('[data-action="reject"]').forEach(b=>b.onclick=()=>{ wrap.remove(); openRejectModal(b.dataset.id); });
-  wrap.querySelectorAll('[data-action="checkin"]').forEach(b=>b.onclick=()=>doTransition(b.dataset.id,'attended','checkinAt','checkinBy','checkinByName','تم تسجيل حضور الموظف'));
-  wrap.querySelectorAll('[data-action="examine"]').forEach(b=>b.onclick=()=>doTransition(b.dataset.id,'examined','examinedAt','examinedBy','examinedByName','تم إجراء الفحص'));
-  wrap.querySelectorAll('[data-action="complete"]').forEach(b=>b.onclick=()=>doTransition(b.dataset.id,'completed','completedAt','completedBy','completedByName','تم إكمال الطلب'));
+  wireStatusActions(wrap, true);
   wrap.querySelectorAll('[data-action="edit"]').forEach(b=>b.onclick=()=>{ wrap.remove(); openEditModal(b.dataset.id); });
   wrap.querySelectorAll('[data-action="delete"]').forEach(b=>b.onclick=()=>{ wrap.remove(); openDeleteConfirm(b.dataset.id); });
 }
