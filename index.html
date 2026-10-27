@@ -89,10 +89,10 @@
   .stat-num{font-family:'Cairo',sans-serif; font-weight:800; font-size:1.7rem;}
   .stat-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:.75rem; }
   @media (min-width:640px){ .stat-grid{ grid-template-columns:repeat(3,1fr); gap:.9rem; } }
-  @media (min-width:1024px){ .stat-grid{ grid-template-columns:repeat(6,1fr); } }
+  @media (min-width:1024px){ .stat-grid{ grid-template-columns:repeat(5,1fr); } }
   .filters-grid{ display:grid; grid-template-columns:1fr 1fr; gap:.75rem; }
   @media (min-width:640px){ .filters-grid{ grid-template-columns:repeat(3,1fr); } }
-  @media (min-width:1024px){ .filters-grid{ grid-template-columns:repeat(6,1fr); } }
+  @media (min-width:1024px){ .filters-grid{ grid-template-columns:repeat(5,1fr); } }
   .cards-grid{ display:grid; grid-template-columns:1fr; gap:1rem; }
   @media (min-width:640px){ .cards-grid{ grid-template-columns:repeat(2,1fr); } }
   @media (min-width:1280px){ .cards-grid{ grid-template-columns:repeat(3,1fr); } }
@@ -338,10 +338,10 @@ function reqTypeBadge(r){
 const S = {
   me:{ uid:null, name:'', email:'' },
   role:null,
-  requests:[], notifications:[], companies:[], sponsors:[], users:[],
+  requests:[], notifications:[], companies:[], users:[],
   unsubs:[],
   tab:null,
-  filters:{ q:'', status:'', company:'', sponsor:'', from:'', to:'' },
+  filters:{ q:'', status:'', company:'', from:'', to:'' },
   notifOpen:false,
   completedMonth:null,
   selectMode:false, selectedIds:new Set(), logVisibleIds:[],
@@ -658,11 +658,6 @@ function subscribeAll(){
     refreshDatalists();
   }, e=>console.error('companies sub', e)));
 
-  const spQ = query(collection(db,'sponsors'), orderBy('name','asc'), limit(500));
-  S.unsubs.push(onSnapshot(spQ, snap=>{
-    S.sponsors = snap.docs.map(d=>d.data().name).filter(Boolean);
-    refreshDatalists();
-  }, e=>console.error('sponsors sub', e)));
 
   if(S.role==='hr' || S.role==='sales'){
     // For HR: full list ordered server-side. For sales: filter to their own
@@ -681,7 +676,6 @@ function subscribeAll(){
 function refreshDatalists(){
   const c = $('#companiesList'); if(c) c.innerHTML = S.companies.map(x=>`<option value="${esc(x)}">`).join('');
   const b = $('#billingList'); if(b) b.innerHTML = S.companies.map(x=>`<option value="${esc(x)}">`).join('');
-  const s = $('#sponsorsList'); if(s) s.innerHTML = S.sponsors.map(x=>`<option value="${esc(x)}">`).join('');
 }
 
 /* ---- Photo handling: resize + compress locally in the browser, store as a
@@ -816,7 +810,7 @@ function renderDashboard(){
   if(S.role==='hr') $('#goNew').onclick = ()=>setTab('new');
   document.querySelectorAll('[data-goto-status]').forEach(tile=>{
     tile.onclick = ()=>{
-      S.filters = { q:'', status: tile.dataset.gotoStatus, company:'', sponsor:'', from:'', to:'' };
+      S.filters = { q:'', status: tile.dataset.gotoStatus, company:'', from:'', to:'' };
       setTab('log');
     };
   });
@@ -847,9 +841,8 @@ function renderNewRequest(){
             <div><label class="field-label">رقم الهوية / الإقامة *</label><input required name="idNumber" inputmode="numeric" placeholder="1XXXXXXXXX"></div>
             <div><label class="field-label">نوع الفحص الطبي</label><input name="examType" placeholder="مثال: فحص عمالة، فحص دوري"></div>
           </div>
-          <div class="grid md:grid-cols-2 gap-4">
-            <div><label class="field-label">اسم الكفيل *</label><input required list="sponsorsList" name="sponsorName" placeholder="اسم الكفيل"><datalist id="sponsorsList"></datalist></div>
-            <div><label class="field-label">اسم الشركة *</label><input required list="companiesList" name="companyName" placeholder="اسم الشركة"><datalist id="companiesList"></datalist></div>
+          <div>
+            <label class="field-label">اسم الشركة *</label><input required list="companiesList" name="companyName" placeholder="اسم الشركة"><datalist id="companiesList"></datalist>
           </div>
           <div><label class="field-label">الشركة التي سيتم إصدار الفاتورة باسمها *</label><input required list="billingList" name="billingCompany" placeholder="قد تكون نفس الشركة أعلاه"><datalist id="billingList"></datalist></div>
           <div>
@@ -905,7 +898,7 @@ function renderNewRequest(){
     e.preventDefault();
     const fd = new FormData(e.target);
     const data = Object.fromEntries(fd.entries());
-    if(!data.employeeNameAr || !data.idNumber || !data.sponsorName || !data.companyName || !data.billingCompany){
+    if(!data.employeeNameAr || !data.idNumber || !data.companyName || !data.billingCompany){
       toast('الرجاء تعبئة الحقول المطلوبة (*)','error'); return;
     }
     const btn = $('#submitBtn');
@@ -924,7 +917,6 @@ function renderNewRequest(){
         employeeNameEn: (data.employeeNameEn||'').trim(),
         idNumber: data.idNumber.trim(),
         photoURL: S.pendingPhotoURL || null,
-        sponsorName: data.sponsorName.trim(),
         companyName: data.companyName.trim(),
         billingCompany: data.billingCompany.trim(),
         examType: (data.examType||'').trim(),
@@ -938,7 +930,6 @@ function renderNewRequest(){
       await Promise.all([
         maybeAddLookup('companies', docData.companyName),
         maybeAddLookup('companies', docData.billingCompany),
-        maybeAddLookup('sponsors', docData.sponsorName),
       ]);
       await addLog(refDoc.id, reqNumber, 'تم إنشاء الطلب', `بواسطة ${S.me.name||'مسؤول HR'}`);
       await notify({ toRole:'reception', requestId: refDoc.id, requestNumber:reqNumber, message:`طلب فحص جديد رقم ${reqNumber} — ${docData.employeeNameAr}` });
@@ -955,7 +946,7 @@ function renderNewRequest(){
 }
 async function maybeAddLookup(coll, name){
   if(!name) return;
-  const list = coll==='companies' ? S.companies : S.sponsors;
+  const list = S.companies;
   if(list.includes(name)) return;
   try{ await addDoc(collection(db,coll), { name, createdAt: nowISO() }); }catch(e){}
 }
@@ -968,12 +959,11 @@ function normalizeHeader(h){
     .replace(/[_\-\/]/g,' ')
     .replace(/\s+/g,' ').trim();
 }
-const IMPORT_FIELD_LABELS = { employeeNameAr:'اسم الموظف', employeeNameEn:'الاسم بالإنجليزي', idNumber:'رقم الهوية', sponsorName:'الكفيل', companyName:'الشركة', billingCompany:'جهة الفاتورة', examType:'نوع الفحص', notes:'ملاحظات' };
+const IMPORT_FIELD_LABELS = { employeeNameAr:'اسم الموظف', employeeNameEn:'الاسم بالإنجليزي', idNumber:'رقم الهوية', companyName:'الشركة', billingCompany:'جهة الفاتورة', examType:'نوع الفحص', notes:'ملاحظات' };
 const IMPORT_FIELD_SYNONYMS = {
   employeeNameAr: ['اسم الموظف','الموظف','اسم الموظف بالعربي','اسم الموظف عربي','الاسم','اسم','name','employee','employee name','full name'],
   employeeNameEn: ['الاسم بالانجليزي','اسم الموظف بالانجليزي','اسم انجليزي','name en','english name','employee name en'],
   idNumber: ['رقم الهويه','الهويه','هويه','رقم الاقامه','الاقامه','اقامه','رقم الهويه الاقامه','id','id number','iqama','national id','identity number'],
-  sponsorName: ['الكفيل','كفيل','اسم الكفيل','sponsor','sponsor name'],
   companyName: ['الشركه','شركه','اسم الشركه','جهه العمل','company','company name','employer'],
   billingCompany: ['الفاتوره','فاتوره باسم','تصدر الفاتوره','الشركه الفاتوره','فاتوره تحت مسمى','تحت مسمى','billing','billing company','invoice company'],
   examType: ['نوع الفحص','الفحص','نوع الكشف','exam type','exam'],
@@ -992,7 +982,7 @@ function openImportModal(){
   wrap.innerHTML = `
     <div class="card p-5 w-full max-w-lg fade-in" style="max-height:90vh;overflow:auto">
       <h3 class="font-bold mb-2">استيراد طلبات من ملف إكسل</h3>
-      <p class="text-xs mb-4" style="color:var(--ink-soft)">اختر أي ملف إكسل (xlsx أو xls أو csv) بأي ترتيب أعمدة — سيتعرّف النظام تلقائياً على أعمدة اسم الموظف، رقم الهوية، الكفيل، الشركة، وجهة الفاتورة من عناوين الأعمدة، ويتجاهل أي أعمدة أخرى غير معروفة.</p>
+      <p class="text-xs mb-4" style="color:var(--ink-soft)">اختر أي ملف إكسل (xlsx أو xls أو csv) بأي ترتيب أعمدة — سيتعرّف النظام تلقائياً على أعمدة اسم الموظف، رقم الهوية، الشركة، وجهة الفاتورة من عناوين الأعمدة، ويتجاهل أي أعمدة أخرى غير معروفة.</p>
       <input type="file" id="importFile" accept=".xlsx,.xls,.csv">
       <div id="importStatus" class="text-sm mt-3" style="color:var(--ink-soft)"></div>
       <div id="importPreviewWrap"></div>
@@ -1037,7 +1027,7 @@ function openImportModal(){
           const companyName = get('companyName') || '—';
           parsedRows.push({
             employeeNameAr, employeeNameEn: get('employeeNameEn'), idNumber,
-            sponsorName: get('sponsorName') || '—', companyName,
+            companyName,
             billingCompany: get('billingCompany') || companyName,
             examType: get('examType'), notes: get('notes'),
           });
@@ -1079,7 +1069,7 @@ function openImportModal(){
           requestNumber: reqNumber,
           employeeNameAr: row.employeeNameAr, employeeNameEn: row.employeeNameEn || '',
           idNumber: row.idNumber, photoURL: null,
-          sponsorName: row.sponsorName, companyName: row.companyName, billingCompany: row.billingCompany,
+          companyName: row.companyName, billingCompany: row.billingCompany,
           examType: row.examType || '', notes: row.notes || '',
           status: 'sent', rejectionReason: '',
           createdAt: nowISO(), createdBy: S.me.uid, createdByName: S.me.name || '',
@@ -1089,7 +1079,6 @@ function openImportModal(){
         await Promise.all([
           maybeAddLookup('companies', docData.companyName),
           maybeAddLookup('companies', docData.billingCompany),
-          maybeAddLookup('sponsors', docData.sponsorName),
         ]);
         await addLog(refDoc.id, reqNumber, 'تم استيراد الطلب من ملف إكسل', `بواسطة ${S.me.name || ''}`);
       }catch(err){ console.error('import row failed', err); }
@@ -1129,8 +1118,7 @@ function requestCard(r){
       </div>
     </div>
     <div class="grid grid-cols-2 gap-y-1.5 text-xs mb-3">
-      <div><span style="color:var(--ink-soft)">الكفيل: </span>${esc(r.sponsorName)}</div>
-      <div><span style="color:var(--ink-soft)">الشركة: </span>${esc(r.companyName)}</div>
+      <div class="col-span-2"><span style="color:var(--ink-soft)">الشركة: </span>${esc(r.companyName)}</div>
       <div class="col-span-2"><span style="color:var(--ink-soft)">فاتورة باسم: </span>${esc(r.billingCompany)}</div>
       <div class="col-span-2"><span style="color:var(--ink-soft)">تاريخ الطلب: </span>${fmtDT(r.createdAt)}</div>
     </div>
@@ -1351,7 +1339,6 @@ function openDeleteUserConfirm(uid){
 function renderLog(){
   const body = $('#pageBody'); if(!body) return;
   const companies = Array.from(new Set(S.requests.map(r=>r.companyName).filter(Boolean))).sort();
-  const sponsors = Array.from(new Set(S.requests.map(r=>r.sponsorName).filter(Boolean))).sort();
   body.innerHTML = `
     ${S.role==='hr' ? `<div class="flex items-center justify-between mb-4" style="flex-wrap:wrap;gap:.5rem;">
       <button id="toggleSelectBtn" class="btn ${S.selectMode?'btn-brand':'btn-ghost'} px-4 py-2 text-sm">${iconCheck}<span class="mr-1">${S.selectMode?'إنهاء التحديد':'تحديد'}</span></button>
@@ -1375,7 +1362,6 @@ function renderLog(){
           ${Object.entries(STATUS).map(([k,v])=>`<option value="${k}" ${S.filters.status===k?'selected':''}>${v.label}</option>`).join('')}
         </select></div>
         <div><label class="field-label">الشركة</label><select id="fcompany"><option value="">الكل</option>${companies.map(c=>`<option ${S.filters.company===c?'selected':''}>${esc(c)}</option>`).join('')}</select></div>
-        <div><label class="field-label">الكفيل</label><select id="fsponsor"><option value="">الكل</option>${sponsors.map(c=>`<option ${S.filters.sponsor===c?'selected':''}>${esc(c)}</option>`).join('')}</select></div>
         <div><label class="field-label">من تاريخ</label><input type="date" id="ffrom" value="${S.filters.from}"></div>
         <div><label class="field-label">إلى تاريخ</label><input type="date" id="fto" value="${S.filters.to}"></div>
       </div>
@@ -1390,10 +1376,10 @@ function renderLog(){
     const del = $('#bulkDelBtn'); if(del) del.onclick = openBulkDeleteConfirm;
   }
   const apply = ()=>{
-    S.filters = { q: $('#fq').value.trim(), status: $('#fstatus').value, company: $('#fcompany').value, sponsor: $('#fsponsor').value, from: $('#ffrom').value, to: $('#fto').value };
+    S.filters = { q: $('#fq').value.trim(), status: $('#fstatus').value, company: $('#fcompany').value, from: $('#ffrom').value, to: $('#fto').value };
     renderLogTable();
   };
-  ['fq','fstatus','fcompany','fsponsor','ffrom','fto'].forEach(id=>{ $('#'+id).addEventListener('input', apply); $('#'+id).addEventListener('change', apply); });
+  ['fq','fstatus','fcompany','ffrom','fto'].forEach(id=>{ $('#'+id).addEventListener('input', apply); $('#'+id).addEventListener('change', apply); });
   renderLogTable();
 }
 function renderLogTable(){
@@ -1405,7 +1391,6 @@ function renderLogTable(){
   else if(f.status === 'attended_examined') items = items.filter(r=> r.status==='attended' || r.status==='examined');
   else if(f.status) items = items.filter(r=>r.status===f.status);
   if(f.company) items = items.filter(r=>r.companyName===f.company);
-  if(f.sponsor) items = items.filter(r=>r.sponsorName===f.sponsor);
   if(f.from) items = items.filter(r=> r.createdAt && r.createdAt.slice(0,10) >= f.from);
   if(f.to) items = items.filter(r=> r.createdAt && r.createdAt.slice(0,10) <= f.to);
   S.logVisibleIds = items.map(r=>r.id);
@@ -1488,7 +1473,7 @@ function requestsTable(items, opts={}){
     <thead><tr>
       ${sel ? '<th class="sel-cell"><input type="checkbox" class="sel-cb" id="selAllHead" title="تحديد الكل"></th>' : ''}
       <th>الموظف</th><th>رقم الطلب</th>
-      <th class="hide-sm">الهوية</th><th class="hide-sm">الكفيل</th><th class="hide-sm">الشركة</th>
+      <th class="hide-sm">الهوية</th><th class="hide-sm">الشركة</th>
       <th>الحالة</th><th class="hide-sm">تاريخ الطلب</th><th class="hide-sm"></th>
     </tr></thead>
     <tbody>
@@ -1503,7 +1488,6 @@ function requestsTable(items, opts={}){
         <td class="rt-emp">${photo}<span class="font-bold">${esc(r.employeeNameAr)}</span></td>
         <td>${esc(r.requestNumber)}</td>
         <td class="hide-sm">${esc(r.idNumber)}</td>
-        <td class="hide-sm">${esc(r.sponsorName)}</td>
         <td class="hide-sm">${esc(r.companyName)}</td>
         <td><div class="flex flex-col gap-1"><span class="badge" style="background:${st.tint};color:${st.fg}">${st.label}</span>${reqTypeBadge(r)}</div></td>
         <td class="hide-sm" style="color:var(--ink-soft)">${fmtD(r.createdAt)}</td>
@@ -1640,7 +1624,6 @@ function openDetailModal(id){
       <div class="grid grid-cols-2 gap-y-2 text-sm mb-3">
         <div><span style="color:var(--ink-soft)">رقم الطلب: </span><b>${esc(r.requestNumber)}</b></div>
         <div><span style="color:var(--ink-soft)">الهوية: </span>${esc(r.idNumber)}</div>
-        <div><span style="color:var(--ink-soft)">الكفيل: </span>${esc(r.sponsorName)}</div>
         <div><span style="color:var(--ink-soft)">الشركة: </span>${esc(r.companyName)}</div>
         <div class="col-span-2"><span style="color:var(--ink-soft)">فاتورة باسم: </span>${esc(r.billingCompany)}</div>
         <div class="col-span-2"><span style="color:var(--ink-soft)">نوع الفحص: </span>${esc(r.examType||'—')}</div>
@@ -1697,9 +1680,8 @@ function openEditModal(id){
           <div><label class="field-label">رقم الهوية / الإقامة *</label><input required name="idNumber" value="${esc(r.idNumber)}"></div>
           <div><label class="field-label">نوع الفحص الطبي</label><input name="examType" value="${esc(r.examType||'')}"></div>
         </div>
-        <div class="grid md:grid-cols-2 gap-4">
-          <div><label class="field-label">اسم الكفيل *</label><input required list="editSponsorsList" name="sponsorName" value="${esc(r.sponsorName)}"><datalist id="editSponsorsList"></datalist></div>
-          <div><label class="field-label">اسم الشركة *</label><input required list="editCompaniesList" name="companyName" value="${esc(r.companyName)}"><datalist id="editCompaniesList"></datalist></div>
+        <div>
+          <label class="field-label">اسم الشركة *</label><input required list="editCompaniesList" name="companyName" value="${esc(r.companyName)}"><datalist id="editCompaniesList"></datalist>
         </div>
         <div><label class="field-label">الشركة التي سيتم إصدار الفاتورة باسمها *</label><input required list="editBillingList" name="billingCompany" value="${esc(r.billingCompany)}"><datalist id="editBillingList"></datalist></div>
         <div>
@@ -1730,7 +1712,6 @@ function openEditModal(id){
   document.body.appendChild(wrap);
   wrap.onclick = (e)=>{ if(e.target===wrap) wrap.remove(); };
   wrap.querySelector('#editCancelBtn').onclick = ()=>wrap.remove();
-  wrap.querySelector('#editSponsorsList').innerHTML = S.sponsors.map(x=>`<option value="${esc(x)}">`).join('');
   wrap.querySelector('#editCompaniesList').innerHTML = S.companies.map(x=>`<option value="${esc(x)}">`).join('');
   wrap.querySelector('#editBillingList').innerHTML = S.companies.map(x=>`<option value="${esc(x)}">`).join('');
 
@@ -1755,7 +1736,7 @@ function openEditModal(id){
     e.preventDefault();
     const fd = new FormData(e.target);
     const data = Object.fromEntries(fd.entries());
-    if(!data.employeeNameAr || !data.idNumber || !data.sponsorName || !data.companyName || !data.billingCompany){
+    if(!data.employeeNameAr || !data.idNumber || !data.companyName || !data.billingCompany){
       toast('الرجاء تعبئة الحقول المطلوبة (*)','error'); return;
     }
     const saveBtn = wrap.querySelector('#editSaveBtn');
@@ -1771,7 +1752,6 @@ function openEditModal(id){
         employeeNameAr: data.employeeNameAr.trim(),
         employeeNameEn: (data.employeeNameEn||'').trim(),
         idNumber: data.idNumber.trim(),
-        sponsorName: data.sponsorName.trim(),
         companyName: data.companyName.trim(),
         billingCompany: data.billingCompany.trim(),
         examType: (data.examType||'').trim(),
@@ -1785,8 +1765,7 @@ function openEditModal(id){
       await Promise.all([
         maybeAddLookup('companies', updates.companyName),
         maybeAddLookup('companies', updates.billingCompany),
-        maybeAddLookup('sponsors', updates.sponsorName),
-      ]);
+        ]);
       await addLog(id, r.requestNumber, 'تم تعديل بيانات الطلب بواسطة HR', `بواسطة ${S.me.name||''}`);
       toast('تم حفظ التعديلات'); wrap.remove();
     }catch(err){ console.error(err); toast('تعذّر حفظ التعديلات','error'); saveBtn.disabled=false; saveBtn.textContent='حفظ التعديلات'; }
