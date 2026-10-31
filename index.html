@@ -340,6 +340,21 @@ const db = getFirestore(fbApp);
 // بهذا تقدر تفتح حسابين مختلفين في تبويبين مختلفين من نفس المتصفح.
 setPersistence(auth, browserSessionPersistence).catch(()=>{});
 
+/* ---- Auto-update: if a newer deploy exists, reload once so nobody runs a stale cached copy ---- */
+const APP_BUILD = '20261101002830';
+(async()=>{
+  try{
+    if(sessionStorage.getItem('masar_reloaded')==='1'){ sessionStorage.removeItem('masar_reloaded'); return; }
+    const res = await fetch(location.pathname + '?chk=' + Date.now(), { cache:'no-store' });
+    if(!res.ok) return;
+    const m = (await res.text()).match(/const APP_BUILD = '(\d+)'/);
+    if(m && m[1] !== APP_BUILD){
+      sessionStorage.setItem('masar_reloaded','1');
+      location.replace(location.pathname + '?v=' + m[1]);
+    }
+  }catch(e){}
+})();
+
 /* ============================= CONFIG ============================= */
 const STATUS = {
   sent:      { label: 'بانتظار زيارة المركز',    tint:'var(--blue-tint)',   fg:'var(--blue)'   },
