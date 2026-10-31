@@ -802,22 +802,28 @@ const EMAILJS = {
   },
 };
 const EMP_EMAIL_META = {
-  sent:      { title:'تم استلام طلب الفحص الطبي', color:'#3468A0', step:'المرحلة الحالية: بانتظار زيارة المركز الطبي',
+  sent:      { title:'تم استلام طلب الفحص الطبي', color:'#1F5FA8', step:'المرحلة الحالية: بانتظار زيارة المركز الطبي',
                subject:'تم استلام طلب الفحص الطبي',
                text:()=>`تم تسجيل طلب الفحص الطبي الخاص بك بنجاح. نرجو التوجه إلى المركز الطبي في أقرب وقت ممكن، مع إحضار الهوية الأصلية.` },
-  examined:  { title:'تم اجتياز الفحص الطبي بنجاح', color:'#6B5AA6', step:'المرحلة الحالية: تم الفحص — بانتظار ظهور النتيجة',
+  examined:  { title:'تم اجتياز الفحص الطبي بنجاح', color:'#5B3FA8', step:'المرحلة الحالية: تم الفحص — بانتظار ظهور النتيجة',
                subject:'تم اجتياز الفحص الطبي بنجاح',
                text:()=>`يسعدنا إبلاغك بأنه تم اجتياز الفحص الطبي بنجاح، وستظهر النتيجة قريباً. وسيتم إخبارك بالخطوات التالية لاستخراج الكرت الصحي الخاص بالبلدية.` },
-  education: { title:'بانتظار اجتياز التثقيف الصحي', color:'#B9852B', step:'المرحلة الحالية: بانتظار اجتياز التثقيف الصحي',
+  education: { title:'بانتظار اجتياز التثقيف الصحي', color:'#B7791F', step:'المرحلة الحالية: بانتظار اجتياز التثقيف الصحي',
                subject:'مطلوب: اجتياز التثقيف الصحي',
                text:()=>`لإتمام إجراءات الكرت الصحي، يلزمك اجتياز التثقيف الصحي. نرجو إنجازه في أقرب وقت ممكن حتى لا تتأخر بقية الإجراءات.` },
-  completed: { title:'اكتملت إجراءات الكرت الصحي', color:'#2D8A54', step:'المرحلة الحالية: اكتملت جميع الإجراءات',
+  completed: { title:'اكتملت إجراءات الكرت الصحي', color:'#1E8449', step:'المرحلة الحالية: اكتملت جميع الإجراءات',
                subject:'اكتملت إجراءات الفحص الطبي',
                text:()=>`تم إنهاء جميع إجراءات الفحص الطبي الخاصة بك بنجاح. شكراً لتعاونك، ونتمنى لك دوام الصحة والعافية.` },
-  rejected:  { title:'تعذّر قبول الطلب', color:'#B8473B', step:'حالة الطلب: مرفوض',
+  rejected:  { title:'تعذّر قبول الطلب', color:'#B03A2E', step:'حالة الطلب: مرفوض',
                subject:'بخصوص طلب الفحص الطبي',
                text:(r,extra)=>`نأسف لإبلاغك بأنه تعذّر قبول طلب الفحص الطبي الخاص بك.${extra?` سبب الرفض: ${extra}.`:''} للاستفسار نرجو التواصل مع قسم الموارد البشرية.` },
 };
+function emailProgress(status, color){
+  const idx = { sent:1, examined:2, education:3, completed:4 }[status] || 0;
+  const off = '#DCE5E0', o = {};
+  for(let i=1;i<=4;i++) o['s'+i] = i<=idx ? color : off;
+  return o;
+}
 async function emailEmployee(r, status, extra){
   try{
     const to = (r && r.employeeEmail || '').trim();
@@ -825,7 +831,7 @@ async function emailEmployee(r, status, extra){
     if(!/^\S+@\S+\.\S+$/.test(to)){ toast('لم يُرسل الإيميل: صيغة إيميل الموظف غير صحيحة','error'); return; }
     const m = EMP_EMAIL_META[status]; if(!m) return;
     const ok = await sendEmailTo(to, r.requestNumber, m.text(r, extra), {
-      subject:`مسار — ${m.subject}`, status_title:m.title, header_color:m.color, step_label:m.step, employee_name:r.employeeNameAr || ''
+      ...emailProgress(status, m.color), subject:`مسار — ${m.subject}`, status_title:m.title, header_color:m.color, step_label:m.step, employee_name:r.employeeNameAr || ''
     });
     toast(ok ? 'تم إرسال إيميل للموظف' : 'تعذّر إرسال الإيميل للموظف', ok ? undefined : 'error');
   }catch(e){ console.error('employee email fail', e); toast('تعذّر إرسال الإيميل للموظف','error'); }
@@ -841,7 +847,7 @@ async function sendEmailTo(to, requestNumber, message, extra){
           to_email: to, app_name: 'مسار',
           subject: requestNumber ? `مسار — طلب فحص رقم ${requestNumber}` : 'مسار — إشعار جديد',
           message, request_number: requestNumber || '',
-          status_title:'إشعار جديد', header_color:'#0E6B5C', step_label:'', employee_name:''
+          status_title:'إشعار جديد', header_color:'#0E6B5C', step_label:'', employee_name:'', s1:'#DCE5E0', s2:'#DCE5E0', s3:'#DCE5E0', s4:'#DCE5E0'
         }, extra||{})
       })
     });
