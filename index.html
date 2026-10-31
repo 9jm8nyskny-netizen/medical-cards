@@ -794,11 +794,11 @@ async function addLog(reqId, reqNumber, action, details){
    EmailJS template variables used: {{to_email}}, {{subject}}, {{message}}, {{request_number}}, {{app_name}} */
 const EMAILJS = {
   serviceId: 'service_whhl73h',
-  templateId: '',  // مثال: 'template_xxxxxxx'
-  publicKey: '',   // مثال: 'AbCdEfGhIjKlMnOp'
+  templateId: 'template_0gsvvj9',
+  publicKey: 'Vsn_G23lW9VQjxEhx',
   recipients: {
     reception: [], // إيميلات موظفي الاستقبال: ['a@example.com']
-    hr: [],        // إيميلات الموارد البشرية
+    hr: ['ramadanazzan857@gmail.com'], // إيميلات الموارد البشرية
   },
 };
 async function sendEmailNotification(toRole, requestNumber, message){
