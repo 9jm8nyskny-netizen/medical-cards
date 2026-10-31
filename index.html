@@ -789,7 +789,38 @@ async function addLog(reqId, reqNumber, action, details){
   try{ await addDoc(collection(db,'logs'), { requestId:reqId, requestNumber:reqNumber, action, details:details||'', byUserId:S.me.uid, byUserName:S.me.name||'', role:S.role, at:nowISO() }); }
   catch(e){ console.error('log fail', e); }
 }
+/* ---------------- Email notifications (EmailJS — free tier, no server) ----------------
+   Fill in the 3 keys + recipient lists below. Leave serviceId empty to keep emails off.
+   EmailJS template variables used: {{to_email}}, {{subject}}, {{message}}, {{request_number}}, {{app_name}} */
+const EMAILJS = {
+  serviceId: '',   // مثال: 'service_xxxxxxx'
+  templateId: '',  // مثال: 'template_xxxxxxx'
+  publicKey: '',   // مثال: 'AbCdEfGhIjKlMnOp'
+  recipients: {
+    reception: [], // إيميلات موظفي الاستقبال: ['a@example.com']
+    hr: [],        // إيميلات الموارد البشرية
+  },
+};
+async function sendEmailNotification(toRole, requestNumber, message){
+  try{
+    if(!EMAILJS.serviceId || !EMAILJS.templateId || !EMAILJS.publicKey) return;
+    const list = (EMAILJS.recipients[toRole] || []).filter(Boolean);
+    if(!list.length) return;
+    await Promise.all(list.map(to => fetch('https://api.emailjs.com/api/v1.0/email/send', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        service_id: EMAILJS.serviceId, template_id: EMAILJS.templateId, user_id: EMAILJS.publicKey,
+        template_params: {
+          to_email: to, app_name: 'مسار',
+          subject: requestNumber ? `مسار — طلب فحص رقم ${requestNumber}` : 'مسار — إشعار جديد',
+          message, request_number: requestNumber || ''
+        }
+      })
+    }).catch(e=>console.error('email fail', e))));
+  }catch(e){ console.error('email fail', e); }
+}
 async function notify({toRole, toUserId, requestId, requestNumber, message}){
+  sendEmailNotification(toRole || 'hr', requestNumber, message);
   try{ await addDoc(collection(db,'notifications'), { toRole:toRole||null, toUserId:toUserId||null, requestId, requestNumber, message, createdAt:nowISO(), read:false }); }
   catch(e){ console.error('notify fail', e); }
 }
