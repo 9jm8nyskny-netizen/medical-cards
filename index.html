@@ -340,20 +340,27 @@ const db = getFirestore(fbApp);
 // بهذا تقدر تفتح حسابين مختلفين في تبويبين مختلفين من نفس المتصفح.
 setPersistence(auth, browserSessionPersistence).catch(()=>{});
 
-/* ---- Auto-update: if a newer deploy exists, reload once so nobody runs a stale cached copy ---- */
-const APP_BUILD = '20261101003355';
-(async()=>{
+/* ---- Auto-update: if a newer deploy exists, reload so nobody runs a stale cached/suspended copy ---- */
+const APP_BUILD = '20261101003445';
+let _lastUpdateCheck = 0;
+async function checkForUpdate(){
   try{
-    if(sessionStorage.getItem('masar_reloaded')==='1'){ sessionStorage.removeItem('masar_reloaded'); return; }
-    const res = await fetch(location.pathname + '?chk=' + Date.now(), { cache:'no-store' });
+    const now = Date.now(); if(now - _lastUpdateCheck < 15000) return; _lastUpdateCheck = now;
+    const res = await fetch(location.pathname + '?chk=' + now, { cache:'no-store' });
     if(!res.ok) return;
     const m = (await res.text()).match(/const APP_BUILD = '(\d+)'/);
     if(m && m[1] !== APP_BUILD){
-      sessionStorage.setItem('masar_reloaded','1');
+      // نمنع التكرار: لا نعيد التحميل لنفس النسخة مرتين
+      if(sessionStorage.getItem('masar_reloaded_to') === m[1]) return;
+      sessionStorage.setItem('masar_reloaded_to', m[1]);
       location.replace(location.pathname + '?v=' + m[1]);
     }
   }catch(e){}
-})();
+}
+checkForUpdate();
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState === 'visible') checkForUpdate(); });
+window.addEventListener('focus', checkForUpdate);
+window.addEventListener('pageshow', (e)=>{ if(e.persisted) checkForUpdate(); });
 
 /* ============================= CONFIG ============================= */
 const STATUS = {
