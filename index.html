@@ -342,7 +342,17 @@ setPersistence(auth, browserSessionPersistence).catch(()=>{});
 
 /* ============================= CONFIG ============================= */
 const STATUS = {
-  sent:      { label: 'بانتظار زيارة المركز',    tint:'var(--blue-tint)',   fg:'var(--blue)'   },
+  sent:      { title:'تم تسجيل طلبك لإجراء الفحص الطبي', pill:'بانتظار زيارة المركز', color:'#1F5FA8', step:'المرحلة الحالية: بانتظار زيارة المركز الطبي',
+               subject:'تم تسجيلك في منصة بلدي',
+               next:'التوجه إلى المركز الطبي خلال مواعيد العمل المذكورة أعلاه لإجراء الفحص الطبي.',
+               block:`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:18px;background:#F5F8F7;border:1px solid #E1E9E5;border-radius:12px;"><tr><td style="padding:14px 18px;font-size:14px;line-height:2;color:#33433E;">
+<div style="font-weight:bold;color:#12201C;">🕘 مواعيد المستشفى (جدة):</div>
+<div>9:00 ص – 3:00 م</div>
+<div dir="ltr" style="text-align:left;margin-top:10px;font-weight:bold;color:#12201C;">🕘 Hospital Hours (Jeddah):</div>
+<div dir="ltr" style="text-align:left;">9:00 AM – 3:00 PM</div>
+<div style="margin-top:14px;"><a href="https://maps.app.goo.gl/sU2WdQ8KntPsuvMfA" style="display:inline-block;background:#1F5FA8;color:#FFFFFF;text-decoration:none;font-weight:bold;font-size:13.5px;padding:10px 20px;border-radius:8px;">📍 موقع المركز الطبي على الخريطة</a></div>
+</td></tr></table>`,
+               text:()=>`تم تسجيلك في منصة بلدي، ويرجى التوجه إلى المركز الطبي لإجراء الفحص الطبي.` },
   examined:  { label: 'تم الفحص',                 tint:'var(--violet-tint)', fg:'var(--violet)' },
   education: { label: 'بانتظار اجتياز التثقيف',   tint:'var(--amber-tint)',  fg:'var(--amber)'  },
   completed: { label: 'تم',                       tint:'var(--green-tint)',  fg:'var(--green)'  },
@@ -840,7 +850,7 @@ async function emailEmployee(r, status, extra){
     if(!/^\S+@\S+\.\S+$/.test(to)){ toast('لم يُرسل الإيميل: صيغة إيميل الموظف غير صحيحة','error'); return; }
     const m = EMP_EMAIL_META[status]; if(!m) return;
     const ok = await sendEmailTo(to, r.requestNumber, m.text(r, extra), {
-      ...emailProgress(status, m.color), subject:`مسار — ${m.subject}`, status_title:m.title, header_color:m.color, step_label:m.step, employee_name:r.employeeNameAr || '', company_name:r.companyName || '—', request_date:fmtMailDate(r.createdAt), next_step:m.next || '', status_pill:m.pill || m.title
+      ...emailProgress(status, m.color), subject:`مسار — ${m.subject}`, status_title:m.title, extra_block:m.block || '', header_color:m.color, step_label:m.step, employee_name:r.employeeNameAr || '', company_name:r.companyName || '—', request_date:fmtMailDate(r.createdAt), next_step:m.next || '', status_pill:m.pill || m.title
     });
     toast(ok ? 'تم إرسال إيميل للموظف' : 'تعذّر إرسال الإيميل للموظف', ok ? undefined : 'error');
   }catch(e){ console.error('employee email fail', e); toast('تعذّر إرسال الإيميل للموظف','error'); }
@@ -856,7 +866,7 @@ async function sendEmailTo(to, requestNumber, message, extra){
           to_email: to, app_name: 'مسار',
           subject: requestNumber ? `مسار — طلب فحص رقم ${requestNumber}` : 'مسار — إشعار جديد',
           message, request_number: requestNumber || '',
-          status_title:'إشعار جديد', header_color:'#0E6B5C', step_label:'', employee_name:'', company_name:'', request_date:'', next_step:'', status_pill:'إشعار', s1:'#DCE5E0', s2:'#DCE5E0', s3:'#DCE5E0', s4:'#DCE5E0'
+          status_title:'إشعار جديد', extra_block:'', header_color:'#0E6B5C', step_label:'', employee_name:'', company_name:'', request_date:'', next_step:'', status_pill:'إشعار', s1:'#DCE5E0', s2:'#DCE5E0', s3:'#DCE5E0', s4:'#DCE5E0'
         }, extra||{})
       })
     });
