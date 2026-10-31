@@ -341,7 +341,7 @@ const db = getFirestore(fbApp);
 setPersistence(auth, browserSessionPersistence).catch(()=>{});
 
 /* ---- Auto-update: if a newer deploy exists, reload so nobody runs a stale cached/suspended copy ---- */
-const APP_BUILD = '20261101003934';
+const APP_BUILD = '20261101004107';
 let _lastUpdateCheck = 0;
 async function checkForUpdate(){
   try{
@@ -895,8 +895,8 @@ async function emailEmployee(r, status, extra){
       status_title:m.title, status_title_en:m.title_en, status_pill:m.pill, status_pill_en:m.pill_en,
       message_en:m.text_en(r, extra), next_step:m.next, next_step_en:m.next_en,
       extra_block:m.block || '', header_color:m.color,
-      employee_name:r.employeeNameAr || r.employeeNameEn || '', employee_name_en:r.employeeNameEn || r.employeeNameAr || '',
-      company_name:r.companyName || '—', request_date:fmtMailDate(r.createdAt)
+      employee_name:r.employeeNameAr || r.employeeNameEn || 'الموظف', employee_name_en:r.employeeNameEn || r.employeeNameAr || 'Employee',
+      company_name:r.companyName || '—', request_date:fmtMailDate(r.createdAt) || fmtMailDate(Date.now())
     });
     toast(ok ? 'تم إرسال إيميل للموظف' : 'تعذّر إرسال الإيميل للموظف', ok ? undefined : 'error');
   }catch(e){ console.error('employee email fail', e); toast('تعذّر إرسال الإيميل للموظف','error'); }
