@@ -341,7 +341,7 @@ const db = getFirestore(fbApp);
 setPersistence(auth, browserSessionPersistence).catch(()=>{});
 
 /* ---- Auto-update: if a newer deploy exists, reload so nobody runs a stale cached/suspended copy ---- */
-const APP_BUILD = '20261101003445';
+const APP_BUILD = '20261101003934';
 let _lastUpdateCheck = 0;
 async function checkForUpdate(){
   try{
@@ -923,7 +923,16 @@ async function sendEmailTo(to, requestNumber, message, extra){
 async function sendEmailNotification(toRole, requestNumber, message){
   try{
     const list = (EMAILJS.recipients[toRole] || []).filter(Boolean);
-    await Promise.all(list.map(to => sendEmailTo(to, requestNumber, message)));
+    const staffExtra = {
+      status_title:'تحديث على طلب فحص', status_title_en:'Medical Exam Request Update',
+      status_pill:'إشعار داخلي', status_pill_en:'Internal Notice',
+      employee_name:'الزميل/ة', employee_name_en:'Colleague',
+      message_en:'A medical exam request has been updated. Please open Masar for details.',
+      next_step:'الدخول إلى منصة مسار لمراجعة الطلب ومتابعة الإجراء المناسب.',
+      next_step_en:'Open the Masar platform to review the request and take the appropriate action.',
+      company_name:'—', request_date:fmtMailDate(Date.now()), header_color:'#0E6B5C'
+    };
+    await Promise.all(list.map(to => sendEmailTo(to, requestNumber, message, staffExtra)));
   }catch(e){ console.error('email fail', e); }
 }
 async function notify({toRole, toUserId, requestId, requestNumber, message}){
