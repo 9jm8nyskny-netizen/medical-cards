@@ -141,6 +141,10 @@
   @media (max-width:400px){ .stat-tile{ height:108px; padding:.85rem .9rem; } }
   input.sel-cb{ width:18px; height:18px; padding:0; margin:0; accent-color:var(--brand); cursor:pointer; vertical-align:middle; }
   td.sel-cell, th.sel-cell{ width:40px; text-align:center; }
+  tr.rt-row.done td{ background:var(--green-tint); }
+  tr.rt-row.done td:first-child{ box-shadow:inset -4px 0 0 var(--green); }
+  tr.rt-row.done:hover td{ background:color-mix(in srgb, var(--green) 22%, var(--surface)); }
+  .card.done{ background:var(--green-tint); border-color:var(--green); border-width:2px; }
   tr.rt-row.selected td{ background:var(--brand-tint); }
   .sel-bar{ position:sticky; top:0; z-index:20; display:flex; align-items:center; justify-content:space-between; gap:.5rem; flex-wrap:wrap;
     background:var(--surface); border:1px solid var(--brand); border-radius:12px; padding:.6rem .8rem; margin-bottom:1rem; box-shadow:0 8px 20px -12px rgba(0,0,0,.5); }
@@ -1139,7 +1143,7 @@ function requestCard(r){
   const st = STATUS[r.status] || STATUS.sent;
   const photo = r.photoURL ? `<img src="${r.photoURL}" class="avatar">` : `<div class="avatar flex items-center justify-center" style="color:var(--ink-soft)">${iconUser}</div>`;
   return `
-  <div class="card p-4 fade-in">
+  <div class="card p-4 fade-in${normStatus(r.status)==='completed'?' done':''}">
     <div class="flex items-start gap-3 mb-3">
       ${photo}
       <div class="min-w-0 flex-1">
@@ -1514,7 +1518,7 @@ function requestsTable(items, opts={}){
           ? `<img src="${r.photoURL}" class="avatar" style="width:30px;height:30px">`
           : `<div class="avatar flex items-center justify-center" style="width:30px;height:30px;color:var(--ink-soft)">${iconUser}</div>`;
         const isSel = sel && S.selectedIds.has(r.id);
-        return `<tr class="rt-row${isSel?' selected':''}" ${sel ? `data-selrow="${r.id}"` : `data-openreq="${r.id}"`}>
+        return `<tr class="rt-row${normStatus(r.status)==='completed'?' done':''}${isSel?' selected':''}" ${sel ? `data-selrow="${r.id}"` : `data-openreq="${r.id}"`}>
         ${sel ? `<td class="sel-cell"><input type="checkbox" class="sel-cb" data-sel="${r.id}" ${isSel?'checked':''}></td>` : ''}
         <td class="rt-emp">${photo}<span class="font-bold">${esc(r.employeeNameAr)}</span></td>
         <td>${esc(r.requestNumber)}</td>
