@@ -342,17 +342,7 @@ setPersistence(auth, browserSessionPersistence).catch(()=>{});
 
 /* ============================= CONFIG ============================= */
 const STATUS = {
-  sent:      { title:'تم تسجيل طلبك لإجراء الفحص الطبي', pill:'بانتظار زيارة المركز', color:'#1F5FA8', step:'المرحلة الحالية: بانتظار زيارة المركز الطبي',
-               subject:'تم تسجيلك في منصة بلدي',
-               next:'التوجه إلى المركز الطبي خلال مواعيد العمل المذكورة أعلاه لإجراء الفحص الطبي.',
-               block:`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:18px;background:#F5F8F7;border:1px solid #E1E9E5;border-radius:12px;"><tr><td style="padding:14px 18px;font-size:14px;line-height:2;color:#33433E;">
-<div style="font-weight:bold;color:#12201C;">🕘 مواعيد المستشفى (جدة):</div>
-<div>9:00 ص – 3:00 م</div>
-<div dir="ltr" style="text-align:left;margin-top:10px;font-weight:bold;color:#12201C;">🕘 Hospital Hours (Jeddah):</div>
-<div dir="ltr" style="text-align:left;">9:00 AM – 3:00 PM</div>
-<div style="margin-top:14px;"><a href="https://maps.app.goo.gl/sU2WdQ8KntPsuvMfA" style="display:inline-block;background:#1F5FA8;color:#FFFFFF;text-decoration:none;font-weight:bold;font-size:13.5px;padding:10px 20px;border-radius:8px;">📍 موقع المركز الطبي على الخريطة</a></div>
-</td></tr></table>`,
-               text:()=>`تم تسجيلك في منصة بلدي، ويرجى التوجه إلى المركز الطبي لإجراء الفحص الطبي.` },
+  sent:      { label: 'بانتظار زيارة المركز',    tint:'var(--blue-tint)',   fg:'var(--blue)'   },
   examined:  { label: 'تم الفحص',                 tint:'var(--violet-tint)', fg:'var(--violet)' },
   education: { label: 'بانتظار اجتياز التثقيف',   tint:'var(--amber-tint)',  fg:'var(--amber)'  },
   completed: { label: 'تم',                       tint:'var(--green-tint)',  fg:'var(--green)'  },
@@ -812,29 +802,56 @@ const EMAILJS = {
   },
 };
 const EMP_EMAIL_META = {
-  sent:      { title:'تم استلام طلب الفحص الطبي', pill:'بانتظار زيارة المركز', color:'#1F5FA8', step:'المرحلة الحالية: بانتظار زيارة المركز الطبي',
-               subject:'تم استلام طلب الفحص الطبي',
-               next:'التوجه إلى المركز الطبي وإحضار الهوية الأصلية.',
-               text:()=>`تم تسجيل طلب الفحص الطبي الخاص بك بنجاح. نرجو التوجه إلى المركز الطبي في أقرب وقت ممكن، مع إحضار الهوية الأصلية.` },
-  examined:  { title:'تم اجتياز الفحص الطبي بنجاح', pill:'تم الفحص', color:'#5B3FA8', step:'المرحلة الحالية: تم الفحص — بانتظار ظهور النتيجة',
-               subject:'تم اجتياز الفحص الطبي بنجاح',
+  sent:      { color:'#1F5FA8',
+               title:'تم تسجيل طلبك لإجراء الفحص الطبي', title_en:'Your Medical Examination Request Has Been Registered',
+               pill:'بانتظار زيارة المركز', pill_en:'Awaiting Center Visit',
+               subject:'تم تسجيلك في منصة بلدي | Registered on Baladi Platform',
+               text:()=>`تم تسجيلك في منصة بلدي، ويرجى التوجه إلى المركز الطبي لإجراء الفحص الطبي.`,
+               text_en:()=>`You have been registered on the Baladi platform. Please proceed to the medical center to undergo the medical examination.`,
+               next:'التوجه إلى المركز الطبي خلال مواعيد العمل المذكورة أعلاه لإجراء الفحص الطبي.',
+               next_en:'Visit the medical center during the working hours stated above to complete the medical examination.',
+               block:`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:18px;background:#F5F8F7;border:1px solid #E1E9E5;border-radius:12px;"><tr><td style="padding:14px 18px;font-size:14px;line-height:2;color:#33433E;">
+<div style="font-weight:bold;color:#12201C;">🕘 مواعيد المستشفى (جدة):</div>
+<div>9:00 ص – 3:00 م</div>
+<div dir="ltr" style="text-align:left;margin-top:10px;font-weight:bold;color:#12201C;">🕘 Hospital Hours (Jeddah):</div>
+<div dir="ltr" style="text-align:left;">9:00 AM – 3:00 PM</div>
+<div style="margin-top:14px;"><a href="https://maps.app.goo.gl/sU2WdQ8KntPsuvMfA" style="display:inline-block;background:#1F5FA8;color:#FFFFFF;text-decoration:none;font-weight:bold;font-size:13.5px;padding:10px 20px;border-radius:8px;">📍 موقع المركز الطبي على الخريطة · Medical Center Location</a></div>
+</td></tr></table>` },
+  examined:  { color:'#5B3FA8',
+               title:'تم اجتياز الفحص الطبي بنجاح', title_en:'Medical Examination Passed Successfully',
+               pill:'تم الفحص', pill_en:'Examination Completed',
+               subject:'تم اجتياز الفحص الطبي بنجاح | Medical Examination Passed',
+               text:()=>`يسعدنا إبلاغك بأنه تم اجتياز الفحص الطبي بنجاح، وستظهر النتيجة قريباً. وسيتم إخبارك بالخطوات التالية لاستخراج الكرت الصحي الخاص بالبلدية.`,
+               text_en:()=>`We are pleased to inform you that you have successfully passed the medical examination. The result will be available shortly, and you will be notified of the next steps to obtain the municipality health card.`,
                next:'انتظار ظهور النتيجة، وسنوافيك بخطوات استخراج الكرت الصحي الخاص بالبلدية.',
-               text:()=>`يسعدنا إبلاغك بأنه تم اجتياز الفحص الطبي بنجاح، وستظهر النتيجة قريباً. وسيتم إخبارك بالخطوات التالية لاستخراج الكرت الصحي الخاص بالبلدية.` },
-  education: { title:'بانتظار اجتياز التثقيف الصحي', pill:'بانتظار التثقيف', color:'#B7791F', step:'المرحلة الحالية: بانتظار اجتياز التثقيف الصحي',
-               subject:'مطلوب: اجتياز التثقيف الصحي',
+               next_en:'Please wait for the result. We will inform you of the steps to obtain the municipality health card.' },
+  education: { color:'#B7791F',
+               title:'بانتظار اجتياز التثقيف الصحي', title_en:'Health Education Required',
+               pill:'بانتظار التثقيف', pill_en:'Awaiting Health Education',
+               subject:'مطلوب: اجتياز التثقيف الصحي | Action Required: Health Education',
+               text:()=>`لإتمام إجراءات الكرت الصحي، يلزمك اجتياز التثقيف الصحي. نرجو إنجازه في أقرب وقت ممكن حتى لا تتأخر بقية الإجراءات.`,
+               text_en:()=>`To complete the health card procedures, you are required to complete the health education course. Please do so as soon as possible to avoid delays.`,
                next:'اجتياز التثقيف الصحي لإكمال إجراءات الكرت الصحي.',
-               text:()=>`لإتمام إجراءات الكرت الصحي، يلزمك اجتياز التثقيف الصحي. نرجو إنجازه في أقرب وقت ممكن حتى لا تتأخر بقية الإجراءات.` },
-  completed: { title:'اكتملت إجراءات الكرت الصحي', pill:'تم', color:'#1E8449', step:'المرحلة الحالية: اكتملت جميع الإجراءات',
-               subject:'اكتملت إجراءات الفحص الطبي',
+               next_en:'Complete the health education course to finalize the health card procedures.' },
+  completed: { color:'#1E8449',
+               title:'اكتملت إجراءات الكرت الصحي', title_en:'Health Card Procedures Completed',
+               pill:'تم', pill_en:'Completed',
+               subject:'اكتملت إجراءات الفحص الطبي | Procedures Completed',
+               text:()=>`تم إنهاء جميع إجراءات الفحص الطبي الخاصة بك بنجاح. شكراً لتعاونك، ونتمنى لك دوام الصحة والعافية.`,
+               text_en:()=>`All procedures for your medical examination have been completed successfully. Thank you for your cooperation, and we wish you good health.`,
                next:'لا يوجد إجراء مطلوب منك، فقد اكتملت جميع الإجراءات.',
-               text:()=>`تم إنهاء جميع إجراءات الفحص الطبي الخاصة بك بنجاح. شكراً لتعاونك، ونتمنى لك دوام الصحة والعافية.` },
-  rejected:  { title:'تعذّر قبول الطلب', pill:'مرفوض', color:'#B03A2E', step:'حالة الطلب: مرفوض',
-               subject:'بخصوص طلب الفحص الطبي',
+               next_en:'No further action is required from you.' },
+  rejected:  { color:'#B03A2E',
+               title:'تعذّر قبول الطلب', title_en:'Request Could Not Be Accepted',
+               pill:'مرفوض', pill_en:'Rejected',
+               subject:'بخصوص طلب الفحص الطبي | Regarding Your Medical Examination Request',
+               text:(r,extra)=>`نأسف لإبلاغك بأنه تعذّر قبول طلب الفحص الطبي الخاص بك.${extra?` سبب الرفض: ${extra}.`:''} للاستفسار نرجو التواصل مع قسم الموارد البشرية.`,
+               text_en:(r,extra)=>`We regret to inform you that your medical examination request could not be accepted.${extra?` Reason: ${extra}.`:''} For inquiries, please contact the Human Resources department.`,
                next:'مراجعة قسم الموارد البشرية لمعرفة التفاصيل أو لإعادة تقديم الطلب.',
-               text:(r,extra)=>`نأسف لإبلاغك بأنه تعذّر قبول طلب الفحص الطبي الخاص بك.${extra?` سبب الرفض: ${extra}.`:''} للاستفسار نرجو التواصل مع قسم الموارد البشرية.` },
+               next_en:'Contact the Human Resources department for details or to resubmit your request.' },
 };
 function fmtMailDate(v){
-  try{ const d = v && v.toDate ? v.toDate() : new Date(v||Date.now()); return d.toLocaleDateString('ar-SA-u-nu-latn',{year:'numeric',month:'long',day:'numeric'}); }
+  try{ const d = v && v.toDate ? v.toDate() : new Date(v||Date.now()); const p=n=>String(n).padStart(2,'0'); return `${p(d.getDate())}/${p(d.getMonth()+1)}/${d.getFullYear()}`; }
   catch(e){ return ''; }
 }
 function emailProgress(status, color){
@@ -850,7 +867,12 @@ async function emailEmployee(r, status, extra){
     if(!/^\S+@\S+\.\S+$/.test(to)){ toast('لم يُرسل الإيميل: صيغة إيميل الموظف غير صحيحة','error'); return; }
     const m = EMP_EMAIL_META[status]; if(!m) return;
     const ok = await sendEmailTo(to, r.requestNumber, m.text(r, extra), {
-      ...emailProgress(status, m.color), subject:`مسار — ${m.subject}`, status_title:m.title, extra_block:m.block || '', header_color:m.color, step_label:m.step, employee_name:r.employeeNameAr || '', company_name:r.companyName || '—', request_date:fmtMailDate(r.createdAt), next_step:m.next || '', status_pill:m.pill || m.title
+      ...emailProgress(status, m.color), subject:`مسار — ${m.subject}`,
+      status_title:m.title, status_title_en:m.title_en, status_pill:m.pill, status_pill_en:m.pill_en,
+      message_en:m.text_en(r, extra), next_step:m.next, next_step_en:m.next_en,
+      extra_block:m.block || '', header_color:m.color,
+      employee_name:r.employeeNameAr || r.employeeNameEn || '', employee_name_en:r.employeeNameEn || r.employeeNameAr || '',
+      company_name:r.companyName || '—', request_date:fmtMailDate(r.createdAt)
     });
     toast(ok ? 'تم إرسال إيميل للموظف' : 'تعذّر إرسال الإيميل للموظف', ok ? undefined : 'error');
   }catch(e){ console.error('employee email fail', e); toast('تعذّر إرسال الإيميل للموظف','error'); }
@@ -866,7 +888,7 @@ async function sendEmailTo(to, requestNumber, message, extra){
           to_email: to, app_name: 'مسار',
           subject: requestNumber ? `مسار — طلب فحص رقم ${requestNumber}` : 'مسار — إشعار جديد',
           message, request_number: requestNumber || '',
-          status_title:'إشعار جديد', extra_block:'', header_color:'#0E6B5C', step_label:'', employee_name:'', company_name:'', request_date:'', next_step:'', status_pill:'إشعار', s1:'#DCE5E0', s2:'#DCE5E0', s3:'#DCE5E0', s4:'#DCE5E0'
+          status_title:'إشعار جديد', status_title_en:'New notification', status_pill_en:'Notice', message_en:'', next_step_en:'', employee_name_en:'', extra_block:'', header_color:'#0E6B5C', step_label:'', employee_name:'', company_name:'', request_date:'', next_step:'', status_pill:'إشعار', s1:'#DCE5E0', s2:'#DCE5E0', s3:'#DCE5E0', s4:'#DCE5E0'
         }, extra||{})
       })
     });
