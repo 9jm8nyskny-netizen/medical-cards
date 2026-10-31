@@ -341,7 +341,7 @@ const db = getFirestore(fbApp);
 setPersistence(auth, browserSessionPersistence).catch(()=>{});
 
 /* ---- Auto-update: if a newer deploy exists, reload once so nobody runs a stale cached copy ---- */
-const APP_BUILD = '20261101002830';
+const APP_BUILD = '20261101003355';
 (async()=>{
   try{
     if(sessionStorage.getItem('masar_reloaded')==='1'){ sessionStorage.removeItem('masar_reloaded'); return; }
@@ -502,6 +502,7 @@ function renderAuthScreen(errMsg){
       </div>
       <p class="auth-subtitle mt-3 mb-6">منصّة إدارة طلبات الفحص الطبي للموظفين — سجّل الدخول للمتابعة إلى لوحة التحكم الخاصة بك.</p>
       <div class="mb-6">${clientLogosRow(46)}</div>
+      <div style="font-size:.68rem;opacity:.55;margin:-.8rem 0 1rem;" dir="ltr">v${APP_BUILD}</div>
 
       <div id="errSlot" class="mb-3">${errMsg? `<div class="err-box">${iconAlert}<span>${esc(errMsg)}</span></div>`:''}</div>
 
@@ -626,6 +627,7 @@ function buildShell(){
           </div>
         </div>
         <button id="logoutBtn" class="pill-btn">${iconXCirc}<span>تسجيل الخروج</span></button>
+        <div style="text-align:center;font-size:.68rem;color:var(--ink-soft);opacity:.7;margin-top:.6rem;" dir="ltr">v${APP_BUILD}</div>
       </div>
     </aside>
 
