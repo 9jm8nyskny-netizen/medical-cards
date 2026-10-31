@@ -801,51 +801,53 @@ const EMAILJS = {
     hr: ['ramadanazzan857@gmail.com'], // إيميلات الموارد البشرية
   },
 };
-const EMP_EMAIL_TEXT = {
-  sent:      r => `مرحباً ${r.employeeNameAr}، تم تسجيل طلب فحصك الطبي رقم ${r.requestNumber}. الحالة: بانتظار زيارة المركز. نرجو التوجه إلى المركز الطبي وإحضار هويتك.`,
-  examined:  r => `مرحباً ${r.employeeNameAr}، تم إجراء فحصك الطبي (طلب رقم ${r.requestNumber}).`,
-  education: r => `مرحباً ${r.employeeNameAr}، طلبك رقم ${r.requestNumber} بانتظار اجتياز التثقيف. نرجو إكمال ذلك في أقرب وقت.`,
-  completed: r => `مرحباً ${r.employeeNameAr}، تم اكتمال إجراءات فحصك الطبي (طلب رقم ${r.requestNumber}). شكراً لك.`,
-  rejected:  (r,extra) => `مرحباً ${r.employeeNameAr}، تم رفض طلب فحصك الطبي رقم ${r.requestNumber}.${extra?` السبب: ${extra}`:''}`,
+const EMP_EMAIL_META = {
+  sent:      { title:'تم تسجيل طلب الفحص الطبي', color:'#3468A0', step:'الخطوة 1 من 4 — بانتظار زيارة المركز',
+               text:r=>`تم تسجيل طلب فحصك الطبي. نرجو التوجه إلى المركز الطبي وإحضار هويتك.` },
+  examined:  { title:'تم إجراء الفحص الطبي', color:'#6B5AA6', step:'الخطوة 2 من 4 — تم الفحص',
+               text:r=>`تم إجراء فحصك الطبي بنجاح، وسيتم إبلاغك بالخطوة التالية.` },
+  education: { title:'بانتظار اجتياز التثقيف', color:'#B9852B', step:'الخطوة 3 من 4 — بانتظار اجتياز التثقيف',
+               text:r=>`طلبك بانتظار اجتياز التثقيف الصحي. نرجو إكماله في أقرب وقت.` },
+  completed: { title:'اكتملت إجراءات الفحص الطبي', color:'#2D8A54', step:'الخطوة 4 من 4 — تم',
+               text:r=>`اكتملت جميع إجراءات فحصك الطبي. شكراً لتعاونك.` },
+  rejected:  { title:'تم رفض الطلب', color:'#B8473B', step:'الطلب مرفوض',
+               text:(r,extra)=>`نأسف، تم رفض طلب فحصك الطبي.${extra?` السبب: ${extra}`:''}` },
 };
 async function emailEmployee(r, status, extra){
   try{
     const to = (r && r.employeeEmail || '').trim();
-    if(!to || !/^\S+@\S+\.\S+$/.test(to)) return;
-    const f = EMP_EMAIL_TEXT[status]; if(!f) return;
-    await sendEmailTo(to, r.requestNumber, f(r, extra));
-  }catch(e){ console.error('employee email fail', e); }
+    if(!to){ toast('لم يُرسل إيميل للموظف: لا يوجد إيميل مسجّل في الطلب'); return; }
+    if(!/^\S+@\S+\.\S+$/.test(to)){ toast('لم يُرسل الإيميل: صيغة إيميل الموظف غير صحيحة','error'); return; }
+    const m = EMP_EMAIL_META[status]; if(!m) return;
+    const ok = await sendEmailTo(to, r.requestNumber, m.text(r, extra), {
+      status_title:m.title, header_color:m.color, step_label:m.step, employee_name:r.employeeNameAr || ''
+    });
+    toast(ok ? 'تم إرسال إيميل للموظف' : 'تعذّر إرسال الإيميل للموظف', ok ? undefined : 'error');
+  }catch(e){ console.error('employee email fail', e); toast('تعذّر إرسال الإيميل للموظف','error'); }
 }
-async function sendEmailTo(to, requestNumber, message){
-  if(!EMAILJS.serviceId || !EMAILJS.templateId || !EMAILJS.publicKey) return;
-  await fetch('https://api.emailjs.com/api/v1.0/email/send', {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({
-      service_id: EMAILJS.serviceId, template_id: EMAILJS.templateId, user_id: EMAILJS.publicKey,
-      template_params: {
-        to_email: to, app_name: 'مسار',
-        subject: requestNumber ? `مسار — طلب فحص رقم ${requestNumber}` : 'مسار — إشعار جديد',
-        message, request_number: requestNumber || ''
-      }
-    })
-  }).catch(e=>console.error('email fail', e));
-}
-async function sendEmailNotification(toRole, requestNumber, message){
+async function sendEmailTo(to, requestNumber, message, extra){
+  if(!EMAILJS.serviceId || !EMAILJS.templateId || !EMAILJS.publicKey) return false;
   try{
-    if(!EMAILJS.serviceId || !EMAILJS.templateId || !EMAILJS.publicKey) return;
-    const list = (EMAILJS.recipients[toRole] || []).filter(Boolean);
-    if(!list.length) return;
-    await Promise.all(list.map(to => fetch('https://api.emailjs.com/api/v1.0/email/send', {
+    const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
         service_id: EMAILJS.serviceId, template_id: EMAILJS.templateId, user_id: EMAILJS.publicKey,
-        template_params: {
+        template_params: Object.assign({
           to_email: to, app_name: 'مسار',
           subject: requestNumber ? `مسار — طلب فحص رقم ${requestNumber}` : 'مسار — إشعار جديد',
-          message, request_number: requestNumber || ''
-        }
+          message, request_number: requestNumber || '',
+          status_title:'إشعار جديد', header_color:'#0E6B5C', step_label:'', employee_name:''
+        }, extra||{})
       })
-    }).catch(e=>console.error('email fail', e))));
+    });
+    if(!res.ok) console.error('email fail', res.status, await res.text());
+    return res.ok;
+  }catch(e){ console.error('email fail', e); return false; }
+}
+async function sendEmailNotification(toRole, requestNumber, message){
+  try{
+    const list = (EMAILJS.recipients[toRole] || []).filter(Boolean);
+    await Promise.all(list.map(to => sendEmailTo(to, requestNumber, message)));
   }catch(e){ console.error('email fail', e); }
 }
 async function notify({toRole, toUserId, requestId, requestNumber, message}){
