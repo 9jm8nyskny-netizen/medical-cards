@@ -1974,7 +1974,11 @@ function openEditModal(id){
         photoURL: S.editPendingPhotoURL,
         updatedAt: nowISO(),
       };
+      const prevStatus = normStatus(r.status);
       await updateDoc(doc(db,'requests',id), updates);
+      if(updates.status && updates.status !== prevStatus){
+        emailEmployee({ ...r, ...updates }, updates.status, updates.status==='rejected' ? updates.rejectionReason : '');
+      }
       await Promise.all([
         maybeAddLookup('companies', updates.companyName),
         maybeAddLookup('companies', updates.billingCompany),
