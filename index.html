@@ -480,7 +480,7 @@ const db = getFirestore(fbApp);
 setPersistence(auth, browserSessionPersistence).catch(()=>{});
 
 /* ---- Auto-update: if a newer deploy exists, reload so nobody runs a stale cached/suspended copy ---- */
-const APP_BUILD = '20261102114931';
+const APP_BUILD = '20261102120621';
 let _lastUpdateCheck = 0;
 async function checkForUpdate(){
   try{
@@ -1624,7 +1624,7 @@ function requestCard(r){
       <div class="col-span-2"><span style="color:var(--ink-soft)">فاتورة باسم: </span>${esc(r.billingCompany)}</div>
       <div class="col-span-2"><span style="color:var(--ink-soft)">تاريخ الطلب: </span>${fmtDT(r.createdAt)}</div>
     </div>
-    ${reqActionsHTML(r,'px-3 py-1.5 text-xs flex-1') ? `<div class="flex flex-wrap gap-2">${reqActionsHTML(r,'px-3 py-1.5 text-xs flex-1')}</div>` : ''}
+    ${(reqActionsHTML(r,'px-3 py-1.5 text-xs flex-1') || S.role==='reception') ? `<div class="flex flex-wrap gap-2">${reqActionsHTML(r,'px-3 py-1.5 text-xs flex-1')}${S.role==='reception' ? `<button class="btn btn-ghost px-3 py-1.5 text-xs" data-wa="${r.id}" title="واتساب" style="color:#25D366">${iconWhatsApp}</button>` : ''}</div>` : ''}
   </div>`;
 }
 /* أزرار الانتقال بين المراحل (للاستقبال): زيارة المركز ← تم الفحص ← اجتياز التثقيف ← تم */
@@ -1642,7 +1642,7 @@ function wireStatusActions(root, inModal){
   T('complete','completed','completedAt','completedBy','completedByName','تم إكمال الطلب');
   root.querySelectorAll('[data-action="reject"]').forEach(b=>b.onclick=()=>{ if(inModal) closeModal(); openRejectModal(b.dataset.id); });
 }
-function wireCardEvents(){ wireStatusActions(document, false); }
+function wireCardEvents(){ wireStatusActions(document, false); document.querySelectorAll('.cards-grid [data-wa]').forEach(el=>{ el.onclick=(e)=>{ e.stopPropagation(); sendWhatsAppToEmployee(el.dataset.wa); }; }); }
 async function doTransition(id, status, atField, byField, nameField, msg){
   const r = S.requests.find(x=>x.id===id); if(!r) return;
   try{
@@ -1994,8 +1994,8 @@ function requestsTable(items, opts={}){
         <td class="hide-sm rt-actions">
           <div class="flex items-center gap-1.5 justify-end">
             <button class="btn btn-ghost px-2.5 py-1 text-xs" data-openreq="${r.id}">تفاصيل</button>
-            ${(S.role==='hr'||S.role==='sales') ? `
-            ${nextStageOf(r) ? `<button class="btn btn-ghost px-2.5 py-1 text-xs" data-next="${r.id}" title="نقل إلى: ${STATUS[nextStageOf(r).to].label}" style="color:var(--brand)">${iconNext}</button>` : ''}
+            ${(S.role==='hr'||S.role==='sales'||S.role==='reception') ? `
+            ${(S.role!=='reception' && nextStageOf(r)) ? `<button class="btn btn-ghost px-2.5 py-1 text-xs" data-next="${r.id}" title="نقل إلى: ${STATUS[nextStageOf(r).to].label}" style="color:var(--brand)">${iconNext}</button>` : ''}
             <button class="btn btn-ghost px-2.5 py-1 text-xs" data-wa="${r.id}" title="إرسال رسالة واتساب للموظف" style="color:#25D366">${iconWhatsApp}</button>
             ` : ''}
             ${S.role==='hr' ? `
@@ -2113,7 +2113,7 @@ function openDetailModal(id){
   if((S.role==='hr'||S.role==='sales') && nextStageOf(r)){
     actionsHTML += `<button class="btn btn-brand px-4 py-2 text-sm" data-action="next" data-id="${r.id}">${iconNext}<span class="mr-1">نقل إلى: ${STATUS[nextStageOf(r).to].label}</span></button>`;
   }
-  if(S.role==='hr'||S.role==='sales'){
+  if(S.role==='hr'||S.role==='sales'||S.role==='reception'){
     actionsHTML += `<button class="btn btn-ghost px-4 py-2 text-sm" data-action="wa" data-id="${r.id}" style="color:#25D366">${iconWhatsApp}<span class="mr-1">إرسال واتساب</span></button>`;
   }
   if(S.role==='hr' || S.role==='sales'){
@@ -2224,7 +2224,8 @@ Thank you for your cooperation.`;
 function openWhatsApp(r, phoneRaw){
   const num = normalizePhone(phoneRaw);
   if(num.length < 10 || num.length > 15){ toast('رقم الجوال غير صالح — تحقق منه','error'); return false; }
-  window.open(`https://wa.me/${num}?text=${encodeURIComponent(buildWaMessage(r))}`, '_blank', 'noopener');
+  // الرسالة التلقائية للموارد البشرية فقط؛ المبيعات والاستقبال يفتحون محادثة فارغة
+  window.open(S.role==='hr' ? `https://wa.me/${num}?text=${encodeURIComponent(buildWaMessage(r))}` : `https://wa.me/${num}`, '_blank', 'noopener');
   try{ addLog(r.id, r.requestNumber, 'تم فتح رسالة واتساب للموظف', `بواسطة ${S.me.name||''}`); }catch(e){}
   return true;
 }
