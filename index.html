@@ -371,7 +371,7 @@ const db = getFirestore(fbApp);
 setPersistence(auth, browserSessionPersistence).catch(()=>{});
 
 /* ---- Auto-update: if a newer deploy exists, reload so nobody runs a stale cached/suspended copy ---- */
-const APP_BUILD = '20261102111341';
+const APP_BUILD = '20261102111536';
 let _lastUpdateCheck = 0;
 async function checkForUpdate(){
   try{
@@ -645,14 +645,17 @@ function buildShell(){
     {id:'log', label:'سجل الطلبات', icon:iconList},
     {id:'completed', label:'طلبات مكتملة', icon:iconCheck},
     {id:'users', label:'إدارة المستخدمين', icon:iconUsers},
+    {id:'chat', label:'الدردشة', icon:iconChat},
   ] : isSales ? [
     {id:'dashboard', label:'لوحة التحكم', icon:iconGrid},
     {id:'log', label:'سجل الطلبات', icon:iconList},
     {id:'completed', label:'طلبات مكتملة', icon:iconCheck},
     {id:'users', label:'إدارة المستخدمين', icon:iconUsers},
+    {id:'chat', label:'الدردشة', icon:iconChat},
   ] : [
     {id:'inbox', label:'الطلبات الواردة', icon:iconInbox},
     {id:'log', label:'جميع الطلبات', icon:iconList},
+    {id:'chat', label:'الدردشة', icon:iconChat},
   ];
 
   $('#app').innerHTML = `
@@ -731,9 +734,154 @@ function setTab(tab){
   if(tab!=='log'){ S.selectMode=false; S.selectedIds.clear(); }
   S.tab = tab;
   document.querySelectorAll('[data-tab]').forEach(n=> n.classList.toggle('active', n.dataset.tab===tab));
-  const titles = { dashboard:'لوحة التحكم', new:'إنشاء طلب فحص طبي جديد', log:'سجل الطلبات', inbox:'الطلبات الواردة', users:'إدارة المستخدمين', completed:'طلبات مكتملة' };
+  const titles = { dashboard:'لوحة التحكم', new:'إنشاء طلب فحص طبي جديد', log:'سجل الطلبات', inbox:'الطلبات الواردة', users:'إدارة المستخدمين', completed:'طلبات مكتملة', chat:'الدردشة' };
   $('#pageTitle').textContent = titles[tab] || '';
   renderTab();
+}
+
+/* ============================= CHAT (group + direct) ============================= */
+const CHAT = { group:[], dm:[], users:[], active:'group', first:{group:true,dm:true}, mobileView:'list' };
+const iconChat = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`;
+const iconSend = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/></svg>`;
+function dmId(a,b){ return [a,b].sort().join('_'); }
+function chatReadMap(){ try{ return JSON.parse(localStorage.getItem('masar_chat_read_'+S.me.uid)||'{}'); }catch(e){ return {}; } }
+function chatMarkRead(conv){ try{ const m=chatReadMap(); m[conv]=nowISO(); localStorage.setItem('masar_chat_read_'+S.me.uid, JSON.stringify(m)); }catch(e){} }
+function chatConvOf(m){ return m.convId; }
+function chatAll(){ return CHAT.group.concat(CHAT.dm); }
+function chatMsgs(conv){ return chatAll().filter(m=>m.convId===conv).sort((a,b)=>(a.createdAt||'').localeCompare(b.createdAt||'')); }
+function chatUnread(conv){
+  const last = chatReadMap()[conv] || '';
+  return chatAll().filter(m=>m.convId===conv && m.from!==S.me.uid && (m.createdAt||'')>last).length;
+}
+function chatUnreadTotal(){
+  const rm = chatReadMap();
+  return chatAll().filter(m=>m.from!==S.me.uid && (m.createdAt||'')>(rm[m.convId]||'')).length;
+}
+function updateChatBadge(){
+  const n = chatUnreadTotal();
+  document.querySelectorAll('[data-tab="chat"]').forEach(a=>{
+    let b = a.querySelector('.chat-badge');
+    if(!n){ if(b) b.remove(); return; }
+    if(!b){ b = document.createElement('span'); b.className='chat-badge'; b.style.cssText='margin-inline-start:auto;background:var(--red);color:#fff;font-size:10px;font-weight:800;min-width:18px;height:18px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;padding:0 5px'; a.appendChild(b); }
+    b.textContent = n>99?'99+':n;
+  });
+}
+function subscribeChat(){
+  CHAT.group=[]; CHAT.dm=[]; CHAT.users=[]; CHAT.first={group:true,dm:true};
+  const onNew = (kind)=> (snap)=>{
+    const arr = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+    if(kind==='group') CHAT.group = arr; else CHAT.dm = arr;
+    if(!CHAT.first[kind]){
+      snap.docChanges().forEach(c=>{
+        if(c.type!=='added') return;
+        const m = c.doc.data();
+        if(m.from===S.me.uid) return;
+        const viewing = S.tab==='chat' && CHAT.active===m.convId && document.visibilityState==='visible';
+        if(!viewing) toast(`💬 ${m.fromName||'رسالة جديدة'}: ${String(m.text||'').slice(0,40)}`);
+      });
+    }
+    CHAT.first[kind] = false;
+    if(S.tab==='chat'){ chatMarkRead(CHAT.active); renderChatList(); renderChatMessages(); }
+    updateChatBadge();
+  };
+  S.unsubs.push(onSnapshot(query(collection(db,'groupMessages')), onNew('group'), e=>console.error('chat group', e)));
+  S.unsubs.push(onSnapshot(query(collection(db,'dmMessages'), where('participants','array-contains',S.me.uid)), onNew('dm'), e=>console.error('chat dm', e)));
+  S.unsubs.push(onSnapshot(query(collection(db,'users'), limit(500)), snap=>{
+    CHAT.users = snap.docs.map(d=>({ id:d.id, ...d.data() })).filter(u=>u.id!==S.me.uid && u.active!==false);
+    if(S.tab==='chat') renderChatList();
+  }, e=>console.error('chat users', e)));
+}
+function chatTitle(conv){
+  if(conv==='group') return 'الدردشة العامة';
+  const other = conv.split('_').find(x=>x!==S.me.uid);
+  const u = CHAT.users.find(x=>x.id===other);
+  return u ? (u.name||u.email||'مستخدم') : 'مستخدم';
+}
+function chatTime(iso){ try{ return new Intl.DateTimeFormat('ar',{calendar:'gregory',hour:'2-digit',minute:'2-digit'}).format(new Date(iso)); }catch(e){ return ''; } }
+function chatDay(iso){ try{ return new Intl.DateTimeFormat('ar',{calendar:'gregory',day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(iso)); }catch(e){ return ''; } }
+function renderChat(){
+  const body = $('#pageBody'); if(!body) return;
+  if($('#chatMsgs') && body.contains($('#chatMsgs'))){ renderChatList(); renderChatMessages(); return; }
+  body.innerHTML = `
+    <div class="card chat-wrap" style="display:flex;height:calc(100vh - 150px);min-height:420px;overflow:hidden">
+      <div id="chatList" class="chat-list" style="width:280px;max-width:100%;border-inline-end:1px solid var(--line);overflow:auto;flex-shrink:0"></div>
+      <div id="chatPane" class="chat-pane" style="flex:1;min-width:0;display:flex;flex-direction:column">
+        <div id="chatHead" style="padding:.75rem 1rem;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:.6rem;font-weight:800"></div>
+        <div id="chatMsgs" style="flex:1;overflow:auto;padding:1rem;display:flex;flex-direction:column;gap:.35rem"></div>
+        <form id="chatForm" style="display:flex;gap:.5rem;padding:.7rem;border-top:1px solid var(--line);align-items:flex-end">
+          <textarea id="chatInput" rows="1" maxlength="1000" placeholder="اكتب رسالة..." style="resize:none;max-height:120px"></textarea>
+          <button class="btn btn-brand" type="submit" style="padding:.65rem .9rem" title="إرسال">${iconSend}</button>
+        </form>
+      </div>
+    </div>
+    <style>
+      @media (max-width:760px){
+        .chat-wrap[data-view="list"] .chat-pane{display:none!important}
+        .chat-wrap[data-view="chat"] .chat-list{display:none!important}
+        .chat-list{width:100%!important;border-inline-end:none!important}
+      }
+      @media (min-width:761px){ #chatBack{display:none} }
+    </style>`;
+  const form = $('#chatForm'), inp = $('#chatInput');
+  form.onsubmit = (e)=>{ e.preventDefault(); sendChat(); };
+  inp.onkeydown = (e)=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendChat(); } };
+  inp.oninput = ()=>{ inp.style.height='auto'; inp.style.height=Math.min(inp.scrollHeight,120)+'px'; };
+  $('.chat-wrap').dataset.view = CHAT.mobileView;
+  chatMarkRead(CHAT.active);
+  renderChatList(); renderChatMessages(); updateChatBadge();
+}
+function renderChatList(){
+  const box = $('#chatList'); if(!box) return;
+  const lastOf = c=>{ const a=chatMsgs(c); return a[a.length-1]; };
+  const row = (conv, title, sub)=>{
+    const un = conv===CHAT.active ? 0 : chatUnread(conv);
+    const lm = lastOf(conv);
+    return `<div class="chat-row" data-conv="${esc(conv)}" style="display:flex;align-items:center;gap:.6rem;padding:.7rem .9rem;cursor:pointer;border-bottom:1px solid var(--line);${conv===CHAT.active?'background:var(--surface-2)':''}">
+      <div class="avatar flex items-center justify-center font-bold" style="color:var(--brand);width:38px;height:38px;flex-shrink:0">${conv==='group'?'👥':esc((title||'؟').slice(0,1))}</div>
+      <div style="min-width:0;flex:1">
+        <div class="text-sm font-bold truncate">${esc(title)}</div>
+        <div class="text-[11px] truncate" style="color:var(--ink-soft)">${lm ? esc((lm.from===S.me.uid?'أنت: ':'')+lm.text) : esc(sub||'')}</div>
+      </div>
+      ${un?`<span style="background:var(--red);color:#fff;font-size:10px;font-weight:800;min-width:18px;height:18px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;padding:0 5px">${un}</span>`:''}
+    </div>`;
+  };
+  const users = CHAT.users.slice().sort((a,b)=>{
+    const la=(lastOf(dmId(S.me.uid,a.id))||{}).createdAt||'', lb=(lastOf(dmId(S.me.uid,b.id))||{}).createdAt||'';
+    return lb.localeCompare(la) || (a.name||'').localeCompare(b.name||'','ar');
+  });
+  box.innerHTML = row('group','الدردشة العامة','كل المستخدمين') +
+    users.map(u=>row(dmId(S.me.uid,u.id), u.name||u.email||'مستخدم', ROLE_LABEL[u.role]||'')).join('');
+  box.querySelectorAll('[data-conv]').forEach(r=>r.onclick=()=>{ CHAT.active=r.dataset.conv; CHAT.mobileView='chat'; const w=$('.chat-wrap'); if(w) w.dataset.view='chat'; chatMarkRead(CHAT.active); renderChatList(); renderChatMessages(); updateChatBadge(); const i=$('#chatInput'); if(i&&window.innerWidth>760) i.focus(); });
+}
+function renderChatMessages(){
+  const box = $('#chatMsgs'), head = $('#chatHead'); if(!box) return;
+  const conv = CHAT.active;
+  head.innerHTML = `<button type="button" id="chatBack" class="btn btn-ghost" style="padding:.3rem .6rem">‹</button><span>${esc(chatTitle(conv))}</span>`;
+  const bk = $('#chatBack'); if(bk) bk.onclick = ()=>{ CHAT.mobileView='list'; const w=$('.chat-wrap'); if(w) w.dataset.view='list'; };
+  const near = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
+  const msgs = chatMsgs(conv);
+  if(!msgs.length){ box.innerHTML = `<div style="margin:auto;color:var(--ink-soft);font-size:.85rem">لا توجد رسائل بعد — ابدأ المحادثة 👋</div>`; return; }
+  let lastDay = '';
+  box.innerHTML = msgs.map(m=>{
+    const mine = m.from===S.me.uid, day = chatDay(m.createdAt);
+    const sep = day!==lastDay ? `<div style="text-align:center;font-size:.7rem;color:var(--ink-soft);margin:.4rem 0">${esc(day)}</div>` : ''; lastDay = day;
+    return sep + `<div style="align-self:${mine?'flex-start':'flex-end'};max-width:78%;background:${mine?'var(--brand)':'var(--surface-2)'};color:${mine?'#fff':'var(--ink)'};padding:.45rem .75rem;border-radius:14px;white-space:pre-wrap;word-break:break-word;font-size:.88rem">
+      ${(!mine && conv==='group')?`<div style="font-size:.68rem;font-weight:800;color:var(--brand);margin-bottom:.15rem">${esc(m.fromName||'')}</div>`:''}${esc(m.text)}
+      <div style="font-size:.62rem;opacity:.7;margin-top:.15rem;text-align:end" dir="ltr">${esc(chatTime(m.createdAt))}</div></div>`;
+  }).join('');
+  if(near || box.dataset.conv!==conv) box.scrollTop = box.scrollHeight;
+  box.dataset.conv = conv;
+}
+async function sendChat(){
+  const inp = $('#chatInput'); if(!inp) return;
+  const text = inp.value.trim(); if(!text) return;
+  const conv = CHAT.active;
+  inp.value=''; inp.style.height='auto';
+  try{
+    const base = { convId:conv, from:S.me.uid, fromName:S.me.name||S.me.email||'', text:text.slice(0,1000), createdAt:nowISO() };
+    if(conv==='group') await addDoc(collection(db,'groupMessages'), base);
+    else await addDoc(collection(db,'dmMessages'), { ...base, participants: conv.split('_') });
+  }catch(e){ console.error(e); toast('تعذّر إرسال الرسالة','error'); inp.value=text; }
 }
 
 /* ============================= DATA SUBSCRIBE ============================= */
@@ -770,6 +918,8 @@ function subscribeAll(){
       if(S.tab==='users') renderUsersAdmin();
     }, e=>{ console.error('users sub', e); toast('تعذّر تحميل قائمة المستخدمين','error'); }));
   }
+  subscribeChat();
+  setTimeout(updateChatBadge, 0);
 }
 function refreshDatalists(){
   const c = $('#companiesList'); if(c) c.innerHTML = S.companies.map(x=>`<option value="${esc(x)}">`).join('');
@@ -999,6 +1149,7 @@ function renderTab(){
   if(S.tab==='inbox') return renderInbox();
   if(S.tab==='users') return renderUsersAdmin();
   if(S.tab==='completed') return renderCompleted();
+  if(S.tab==='chat') return renderChat();
 }
 
 /* ---------------- HR: Dashboard ---------------- */
