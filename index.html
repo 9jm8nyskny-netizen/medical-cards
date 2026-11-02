@@ -480,7 +480,7 @@ const db = getFirestore(fbApp);
 setPersistence(auth, browserSessionPersistence).catch(()=>{});
 
 /* ---- Auto-update: if a newer deploy exists, reload so nobody runs a stale cached/suspended copy ---- */
-const APP_BUILD = '20261102124144';
+const APP_BUILD = '20261102173911';
 let _lastUpdateCheck = 0;
 async function checkForUpdate(){
   try{
@@ -723,7 +723,7 @@ function renderNoProfileScreen(){
 }
 
 /* ============================= APP SHELL ============================= */
-function clearSubs(){ S.unsubs.forEach(u=>{ try{u();}catch(e){} }); S.unsubs = []; }
+function clearSubs(){ S.unsubs.forEach(u=>{ try{u();}catch(e){} }); S.unsubs = []; S._notifReady = false; }
 
 function startApp(){
   S.tab = S.role==='reception' ? 'inbox' : 'dashboard';
@@ -731,6 +731,7 @@ function startApp(){
   subscribeAll();
   startSessionWatch();
   startPresence();
+  initAlerts();
 }
 
 function curTheme(){ return document.documentElement.getAttribute('data-masar-theme')==='dark' ? 'dark' : 'light'; }
@@ -859,6 +860,50 @@ function setTab(tab){
   renderTab();
 }
 
+/* ============================= ALERTS (sound + system notification + app badge) ============================= */
+let _actx = null;
+function unlockAudio(){ try{ if(!_actx) _actx = new (window.AudioContext||window.webkitAudioContext)(); if(_actx.state==='suspended') _actx.resume(); }catch(e){} }
+function playPing(){
+  try{
+    unlockAudio(); if(!_actx) return;
+    const t = _actx.currentTime;
+    [880,1175].forEach((f,i)=>{
+      const o=_actx.createOscillator(), g=_actx.createGain(); o.type='sine'; o.frequency.value=f;
+      g.gain.setValueAtTime(0.0001,t+i*.16); g.gain.exponentialRampToValueAtTime(.25,t+i*.16+.02); g.gain.exponentialRampToValueAtTime(.0001,t+i*.16+.3);
+      o.connect(g); g.connect(_actx.destination); o.start(t+i*.16); o.stop(t+i*.16+.32);
+    });
+  }catch(e){}
+}
+async function showSystemNotification(title, body, tag){
+  try{
+    if(!('Notification' in window) || Notification.permission!=='granted') return;
+    const T = window.MASAR_TR || (x=>x);
+    const icon = (document.querySelector('link[rel="apple-touch-icon"]')||{}).href;
+    const opts = { body:T(body), tag, icon, badge:icon, renotify:true, dir:'auto' };
+    const reg = navigator.serviceWorker && await navigator.serviceWorker.getRegistration();
+    if(reg && reg.showNotification) await reg.showNotification(T(title), opts); else new Notification(T(title), opts);
+  }catch(e){ console.error('notif', e); }
+}
+function alertUser(title, body, tag){
+  playPing();
+  if(document.visibilityState!=='visible') showSystemNotification(title, body, tag);
+}
+function updateAppBadge(){
+  try{
+    const n = myNotifications().filter(x=>!x.read).length + chatUnreadTotal();
+    if(navigator.setAppBadge){ if(n>0) navigator.setAppBadge(n).catch(()=>{}); else navigator.clearAppBadge && navigator.clearAppBadge().catch(()=>{}); }
+  }catch(e){}
+}
+function initAlerts(){
+  try{ if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{}); }catch(e){}
+  const first = ()=>{
+    unlockAudio();
+    try{ if('Notification' in window && Notification.permission==='default') Notification.requestPermission(); }catch(e){}
+  };
+  document.addEventListener('click', first, { once:true });
+  document.addEventListener('keydown', unlockAudio, { once:true });
+}
+
 /* ============================= PRESENCE (online / last seen / last login) ============================= */
 const PRESENCE_ONLINE_MS = 5*60*1000, PRESENCE_BEAT_MS = 2*60*1000;
 let presenceTimer = null;
@@ -947,12 +992,12 @@ function subscribeChat(){
         const m = c.doc.data();
         if(m.from===S.me.uid) return;
         const viewing = S.tab==='chat' && CHAT.active===m.convId && document.visibilityState==='visible';
-        if(!viewing) toast(`💬 ${m.fromName||'رسالة جديدة'}: ${String(m.text||'').slice(0,40)}`);
+        if(!viewing){ toast(`💬 ${m.fromName||'رسالة جديدة'}: ${String(m.text||'').slice(0,40)}`); alertUser(m.fromName||'رسالة جديدة', String(m.text||'').slice(0,120), 'c-'+m.convId); }
       });
     }
     CHAT.first[kind] = false;
     if(S.tab==='chat'){ chatMarkRead(CHAT.active); renderChatList(); renderChatMessages(); }
-    updateChatBadge();
+    updateChatBadge(); updateAppBadge();
   };
   S.unsubs.push(onSnapshot(query(collection(db,'groupMessages')), onNew('group'), e=>console.error('chat group', e)));
   S.unsubs.push(onSnapshot(query(collection(db,'dmMessages'), where('participants','array-contains',S.me.uid)), onNew('dm'), e=>console.error('chat dm', e)));
@@ -1072,7 +1117,17 @@ function subscribeAll(){
   const notifQ = query(collection(db,'notifications'), orderBy('createdAt','desc'), limit(200));
   S.unsubs.push(onSnapshot(notifQ, snap=>{
     S.notifications = snap.docs.map(d=>({ id:d.id, ...d.data() }));
-    updateNotifDot(); renderNotifPanel();
+    if(S._notifReady){
+      snap.docChanges().forEach(c=>{
+        if(c.type!=='added') return;
+        const n = c.doc.data();
+        if(!(n.toRole===S.role || n.toUserId===S.me.uid) || n.byUserId===S.me.uid) return;
+        toast('🔔 '+(n.message||''));
+        alertUser('مسار', n.message||'', 'n-'+c.doc.id);
+      });
+    }
+    S._notifReady = true;
+    updateNotifDot(); renderNotifPanel(); updateAppBadge();
   }, e=>console.error('notif sub', e)));
 
   const compQ = query(collection(db,'companies'), orderBy('name','asc'), limit(500));
@@ -1311,7 +1366,7 @@ async function sendEmailNotification(toRole, requestNumber, message){
 }
 async function notify({toRole, toUserId, requestId, requestNumber, message}){
   sendEmailNotification(toRole || 'hr', requestNumber, message);
-  try{ await addDoc(collection(db,'notifications'), { toRole:toRole||null, toUserId:toUserId||null, requestId, requestNumber, message, createdAt:nowISO(), read:false }); }
+  try{ await addDoc(collection(db,'notifications'), { toRole:toRole||null, toUserId:toUserId||null, requestId, requestNumber, message, createdAt:nowISO(), read:false, byUserId:S.me.uid }); }
   catch(e){ console.error('notify fail', e); }
 }
 
