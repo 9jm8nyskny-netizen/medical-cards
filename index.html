@@ -72,7 +72,7 @@
 'عربي':'Arabic','مفتوح':'Open','الشركه':'Company','حفظ':'Save','تعديل':'Edit','إضافة':'Add','تم الإرسال':'Sent','إرسال رسالة واتساب للموظف':'Send WhatsApp message to employee','تعديل بيانات الطلب':'Edit request data',
 };
 var PARTIAL = {
-'الوضع الغامق':'Dark mode','الوضع الفاتح':'Light mode','تم تحديد':'Selected','بنجاح':'successfully','لم يسبق للموظف إجراء الفحص. تجديد':'Employee has not been examined before. Renewal','— تأكد من صلاحيات الحذف':'— check delete permissions','غير منتهية':'Not expired',
+'الاتصال':'Status','آخر دخول':'Last login','متصل الآن':'Online now','آخر ظهور':'Last seen','لم يدخل بعد':'Never signed in','الوضع الغامق':'Dark mode','الوضع الفاتح':'Light mode','تم تحديد':'Selected','بنجاح':'successfully','لم يسبق للموظف إجراء الفحص. تجديد':'Employee has not been examined before. Renewal','— تأكد من صلاحيات الحذف':'— check delete permissions','غير منتهية':'Not expired',
 'طلب فحص جديد رقم':'New exam request no.','تم إنشاء الطلب رقم':'Request created no.','تم إنشاء الطلب':'Request created','تم إكمال الطلب':'Request completed','تم رفض الطلب':'Request rejected','تم حذف الطلب':'Request deleted','تم حفظ التعديلات':'Changes saved',
 'اكتمل طلب الفحص رقم':'Exam request completed no.','تم رفض طلب الفحص رقم':'Exam request rejected no.','تحديث حالة طلب الفحص رقم':'Exam request status updated no.','هل أنت متأكد من حذف طلب رقم':'Are you sure you want to delete request no.','هل أنت متأكد من حذف حساب':'Are you sure you want to delete the account of',
 'تم تعديل بيانات الطلب بواسطة HR':'Request data edited by HR','تم فتح رسالة واتساب للموظف':'WhatsApp message opened for employee','تم استيراد الطلب من ملف إكسل':'Request imported from Excel file','طلب فحص جديد من ملف إكسل':'New exam request from Excel file',
@@ -480,7 +480,7 @@ const db = getFirestore(fbApp);
 setPersistence(auth, browserSessionPersistence).catch(()=>{});
 
 /* ---- Auto-update: if a newer deploy exists, reload so nobody runs a stale cached/suspended copy ---- */
-const APP_BUILD = '20261102120912';
+const APP_BUILD = '20261102124144';
 let _lastUpdateCheck = 0;
 async function checkForUpdate(){
   try{
@@ -730,6 +730,7 @@ function startApp(){
   buildShell();
   subscribeAll();
   startSessionWatch();
+  startPresence();
 }
 
 function curTheme(){ return document.documentElement.getAttribute('data-masar-theme')==='dark' ? 'dark' : 'light'; }
@@ -842,8 +843,8 @@ function buildShell(){
   $('#mobileMenuBtn').onclick = ()=> $('#mobileNav').classList.remove('hidden');
   $('#mobileNavBackdrop').onclick = closeMobileNav;
   wireThemeBtns(); wireLangBtns();
-  $('#logoutBtn').onclick = ()=>signOut(auth);
-  $('#logoutBtnMobile').onclick = ()=>signOut(auth);
+  $('#logoutBtn').onclick = logoutNow;
+  $('#logoutBtnMobile').onclick = logoutNow;
   $('#notifBtn').onclick = toggleNotifPanel;
   setTab(S.tab);
 }
@@ -857,6 +858,56 @@ function setTab(tab){
   $('#pageTitle').textContent = titles[tab] || '';
   renderTab();
 }
+
+/* ============================= PRESENCE (online / last seen / last login) ============================= */
+const PRESENCE_ONLINE_MS = 5*60*1000, PRESENCE_BEAT_MS = 2*60*1000;
+let presenceTimer = null;
+const _en = ()=> window.MASAR_LANG==='en';
+function presenceOf(u){
+  const seen = u && u.lastSeenAt ? Date.parse(u.lastSeenAt) : 0;
+  const off = u && u.offlineAt ? Date.parse(u.offlineAt) : 0;
+  const online = !!seen && (Date.now()-seen) < PRESENCE_ONLINE_MS && !(off && off >= seen);
+  return { online, seen };
+}
+function agoText(iso){
+  const t = Date.parse(iso); if(!t) return '—';
+  const m = Math.floor((Date.now()-t)/60000);
+  if(m < 1) return _en() ? 'just now' : 'الآن';
+  if(m < 60) return _en() ? `${m} min ago` : `قبل ${m} دقيقة`;
+  const h = Math.floor(m/60);
+  if(h < 24) return _en() ? `${h} h ago` : `قبل ${h} ساعة`;
+  return fmtDT(iso);
+}
+function presenceHTML(u){
+  const p = presenceOf(u);
+  if(p.online) return `<span style="display:inline-flex;align-items:center;gap:.35rem;color:var(--green);font-weight:700"><span style="width:9px;height:9px;border-radius:50%;background:var(--green);display:inline-block"></span>${_en()?'Online now':'متصل الآن'}</span>`;
+  const txt = u && u.lastSeenAt ? (_en()?'Last seen ':'آخر ظهور ')+agoText(u.lastSeenAt) : (_en()?'Never signed in':'لم يدخل بعد');
+  return `<span style="display:inline-flex;align-items:center;gap:.35rem;color:var(--ink-soft)"><span style="width:9px;height:9px;border-radius:50%;background:var(--ink-soft);opacity:.5;display:inline-block"></span>${txt}</span>`;
+}
+async function presenceBeat(){
+  if(!S.me.uid || document.visibilityState==='hidden') return;
+  try{ await updateDoc(doc(db,'users',S.me.uid), { lastSeenAt: nowISO() }); }catch(e){ console.error('presence', e); }
+}
+async function presenceMarkOffline(){
+  if(!S.me.uid) return;
+  try{ const n = nowISO(); await updateDoc(doc(db,'users',S.me.uid), { lastSeenAt:n, offlineAt:n }); }catch(e){}
+}
+function startPresence(){
+  if(presenceTimer){ clearInterval(presenceTimer); presenceTimer = null; }
+  const upd = { lastSeenAt: nowISO() };
+  try{
+    const k = 'masar_login_marked_'+S.me.uid;
+    if(!sessionStorage.getItem(k)){ upd.lastLoginAt = upd.lastSeenAt; sessionStorage.setItem(k,'1'); }
+  }catch(e){}
+  updateDoc(doc(db,'users',S.me.uid), upd).catch(e=>console.error('presence', e));
+  presenceTimer = setInterval(()=>{
+    presenceBeat();
+    if(S.tab==='users') { try{ renderUsersAdmin(); }catch(e){} }
+    if(S.tab==='chat') { try{ renderChatList(); renderChatMessages(); }catch(e){} }
+  }, PRESENCE_BEAT_MS);
+  document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') presenceBeat(); });
+}
+async function logoutNow(){ if(presenceTimer){ clearInterval(presenceTimer); presenceTimer=null; } await presenceMarkOffline(); signOut(auth); }
 
 /* ============================= CHAT (group + direct) ============================= */
 const CHAT = { group:[], dm:[], users:[], active:'group', first:{group:true,dm:true}, mobileView:'list' };
@@ -910,6 +961,12 @@ function subscribeChat(){
     if(S.tab==='chat') renderChatList();
   }, e=>console.error('chat users', e)));
 }
+function chatPresence(conv){
+  if(conv==='group') return '';
+  const other = conv.split('_').find(x=>x!==S.me.uid);
+  const u = CHAT.users.find(x=>x.id===other);
+  return u ? presenceHTML(u) : '';
+}
 function chatTitle(conv){
   if(conv==='group') return 'الدردشة العامة';
   const other = conv.split('_').find(x=>x!==S.me.uid);
@@ -960,6 +1017,7 @@ function renderChatList(){
       <div style="min-width:0;flex:1">
         <div class="text-sm font-bold truncate">${esc(title)}</div>
         <div class="text-[11px] truncate" style="color:var(--ink-soft)">${lm ? esc((lm.from===S.me.uid?'أنت: ':'')+lm.text) : esc(sub||'')}</div>
+        ${conv!=='group' ? `<div class="text-[10px]">${chatPresence(conv)}</div>` : ''}
       </div>
       ${un?`<span style="background:var(--red);color:#fff;font-size:10px;font-weight:800;min-width:18px;height:18px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;padding:0 5px">${un}</span>`:''}
     </div>`;
@@ -975,7 +1033,7 @@ function renderChatList(){
 function renderChatMessages(){
   const box = $('#chatMsgs'), head = $('#chatHead'); if(!box) return;
   const conv = CHAT.active;
-  head.innerHTML = `<button type="button" id="chatBack" class="btn btn-ghost" style="padding:.3rem .6rem">‹</button><span>${esc(chatTitle(conv))}</span>`;
+  head.innerHTML = `<button type="button" id="chatBack" class="btn btn-ghost" style="padding:.3rem .6rem">‹</button><span>${esc(chatTitle(conv))}</span><span class="text-[11px]" style="font-weight:600">${chatPresence(conv)}</span>`;
   const bk = $('#chatBack'); if(bk) bk.onclick = ()=>{ CHAT.mobileView='list'; const w=$('.chat-wrap'); if(w) w.dataset.view='list'; };
   const near = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
   const msgs = chatMsgs(conv);
@@ -1715,7 +1773,7 @@ function renderUsersAdmin(){
       <div class="card overflow-hidden">
         <div class="px-5 py-4 font-bold" style="border-bottom:1px solid var(--line)">${isHR?'المستخدمون الحاليون':'الحسابات التي أضفتها'} (${S.users.length})</div>
         <div class="scrollx"><table class="rtable">
-          <thead><tr><th>الاسم</th><th>البريد الإلكتروني</th><th>الصفة</th><th class="hide-sm">تاريخ الإنشاء</th>${isHR?'<th class="hide-sm">أُضيف بواسطة</th><th></th>':''}</tr></thead>
+          <thead><tr><th>الاسم</th><th>البريد الإلكتروني</th><th>الصفة</th><th>الاتصال</th><th class="hide-sm">آخر دخول</th><th class="hide-sm">تاريخ الإنشاء</th>${isHR?'<th class="hide-sm">أُضيف بواسطة</th><th></th>':''}</tr></thead>
           <tbody>
             ${S.users.length ? S.users.map(u=>{
               const creatorName = u.createdByName || (S.users.find(x=>x.id===u.createdBy)||{}).name || '—';
@@ -1723,6 +1781,8 @@ function renderUsersAdmin(){
               <td class="font-bold truncate" style="max-width:110px;">${esc(u.name||'—')}</td>
               <td class="truncate" style="max-width:160px;color:var(--ink-soft)">${esc(u.email||'—')}</td>
               <td><span class="badge" style="background:${u.role==='hr'?'var(--brand-tint)':u.role==='sales'?'var(--violet-tint)':'var(--blue-tint)'};color:${u.role==='hr'?'var(--brand)':u.role==='sales'?'var(--violet)':'var(--blue)'}">${esc(ROLE_LABEL[u.role]||u.role||'—')}</span></td>
+              <td style="white-space:nowrap">${presenceHTML(u)}</td>
+              <td class="hide-sm" style="color:var(--ink-soft);white-space:nowrap">${u.lastLoginAt ? fmtDT(u.lastLoginAt) : '—'}</td>
               <td class="hide-sm" style="color:var(--ink-soft)">${fmtD(u.createdAt)}</td>
               ${isHR ? `<td class="hide-sm" style="color:var(--ink-soft)">${esc(creatorName)}</td><td>
                 <div class="flex items-center gap-1.5 justify-end">
@@ -1730,7 +1790,7 @@ function renderUsersAdmin(){
                   ${u.id!==S.me.uid ? `<button class="btn btn-ghost px-2.5 py-1 text-xs" data-deluser="${u.id}" title="حذف" style="color:var(--red)">${iconTrash}</button>` : ''}
                 </div>
               </td>` : ''}
-            </tr>`;}).join('') : `<tr><td colspan="${isHR?6:4}" class="text-center py-6" style="color:var(--ink-soft)">${isHR?'لا يوجد مستخدمون بعد':'لم تُضف أي حسابات بعد'}</td></tr>`}
+            </tr>`;}).join('') : `<tr><td colspan="${isHR?8:6}" class="text-center py-6" style="color:var(--ink-soft)">${isHR?'لا يوجد مستخدمون بعد':'لم تُضف أي حسابات بعد'}</td></tr>`}
           </tbody>
         </table></div>
       </div>
