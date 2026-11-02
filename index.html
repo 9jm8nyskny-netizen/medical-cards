@@ -30,6 +30,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+(function(){try{var t=localStorage.getItem('masar_theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-masar-theme',t);}catch(e){}})();
+</script>
 <style>
   :root{
     --ink:#16231F; --ink-soft:#4C5E58; --line:#DEE7E2;
@@ -183,6 +186,33 @@
     border-radius:999px; padding:.55rem .8rem; font-size:.78rem; font-weight:700; cursor:pointer;
   }
   .pill-btn:hover{background:var(--line); color:var(--ink);}
+
+
+  /* ===================== Theme toggle (light / dark) — applies to every role ===================== */
+  html[data-masar-theme="light"] #app .app-shell, html[data-masar-theme="light"]{
+    --ink:#16231F; --ink-soft:#4C5E58; --line:#DEE7E2;
+    --bg:#F4F8F6; --surface:#FFFFFF; --surface-2:#EEF4F1;
+    --brand:#0E6B5C; --brand-dark:#0A4E43; --brand-tint:#E3F2EE;
+    --amber:#B9852B; --amber-tint:#FBF1DF;
+    --blue:#3468A0; --blue-tint:#E7EFF7;
+    --violet:#6B5AA6; --violet-tint:#EEEBF8;
+    --green:#2D8A54; --green-tint:#E5F4EA;
+    --red:#B8473B; --red-tint:#FBEAE8;
+    --teal-solid:#0E6B5C;
+  }
+  html[data-masar-theme="dark"]{
+    --ink:#F3F8F6; --ink-soft:#96AAA2; --line:#223530;
+    --bg:#0A1310; --surface:#152119; --surface-2:#1C2B23;
+    --brand:#18B989; --brand-dark:#0F9B72; --brand-tint:#163C2E;
+    --amber:#E3A93F; --amber-tint:#2E2712;
+    --blue:#4E93E8; --blue-tint:#16273A;
+    --violet:#9E86F2; --violet-tint:#251E3A;
+    --green:#3FCB84; --green-tint:#132A1D;
+    --red:#F0685C; --red-tint:#331917;
+  }
+  html[data-masar-theme="light"] .app-sidebar{ box-shadow:0 18px 40px -22px rgba(10,30,25,.25); }
+  html[data-masar-theme="light"] .app-logo-text{ background:linear-gradient(90deg,#0E6B5C,#B9852B); -webkit-background-clip:text; background-clip:text; }
+  .theme-btn{ width:100%; margin-bottom:.5rem; }
 
   /* ===================== Auth screen ===================== */
   .auth-page{
@@ -341,7 +371,7 @@ const db = getFirestore(fbApp);
 setPersistence(auth, browserSessionPersistence).catch(()=>{});
 
 /* ---- Auto-update: if a newer deploy exists, reload so nobody runs a stale cached/suspended copy ---- */
-const APP_BUILD = '20261102110758';
+const APP_BUILD = '20261102111341';
 let _lastUpdateCheck = 0;
 async function checkForUpdate(){
   try{
@@ -592,6 +622,20 @@ function startApp(){
   startSessionWatch();
 }
 
+function curTheme(){ return document.documentElement.getAttribute('data-masar-theme')==='light' ? 'light' : 'dark'; }
+function themeBtnHTML(){
+  const light = curTheme()==='light';
+  return `<button class="pill-btn theme-btn" data-theme-toggle title="تغيير المظهر">${light ? '🌙' : '☀️'}<span>${light ? 'الوضع الغامق' : 'الوضع الفاتح'}</span></button>`;
+}
+function toggleTheme(){
+  const t = curTheme()==='light' ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-masar-theme', t);
+  try{ localStorage.setItem('masar_theme', t); }catch(e){}
+  try{ document.querySelector('meta[name="theme-color"]').setAttribute('content', t==='light' ? '#f4f8f6' : '#0a1310'); }catch(e){}
+  document.querySelectorAll('[data-theme-toggle]').forEach(b=>{ b.outerHTML = themeBtnHTML(); });
+  wireThemeBtns();
+}
+function wireThemeBtns(){ document.querySelectorAll('[data-theme-toggle]').forEach(b=>b.onclick=toggleTheme); }
 function buildShell(){
   const isHR = S.role==='hr';
   const isSales = S.role==='sales';
@@ -633,6 +677,7 @@ function buildShell(){
             <div class="text-[11px]" style="color:var(--ink-soft)">${esc(ROLE_LABEL[S.role])}</div>
           </div>
         </div>
+        ${themeBtnHTML()}
         <button id="logoutBtn" class="pill-btn">${iconXCirc}<span>تسجيل الخروج</span></button>
         <div style="text-align:center;font-size:.68rem;color:var(--ink-soft);opacity:.7;margin-top:.6rem;" dir="ltr">v${APP_BUILD}</div>
       </div>
@@ -665,7 +710,8 @@ function buildShell(){
       <nav class="flex flex-col gap-1" id="navlinksMobile">
         ${navItems.map(n=>`<div class="navlink" data-tab="${n.id}">${n.icon}<span>${n.label}</span></div>`).join('')}
       </nav>
-      <button id="logoutBtnMobile" class="pill-btn mt-4">${iconXCirc}<span>تسجيل الخروج</span></button>
+      <div class="mt-4">${themeBtnHTML()}</div>
+      <button id="logoutBtnMobile" class="pill-btn">${iconXCirc}<span>تسجيل الخروج</span></button>
     </div>
   </div>
   </div>`;
@@ -673,6 +719,7 @@ function buildShell(){
   document.querySelectorAll('[data-tab]').forEach(n=>n.onclick=()=>{ setTab(n.dataset.tab); closeMobileNav(); });
   $('#mobileMenuBtn').onclick = ()=> $('#mobileNav').classList.remove('hidden');
   $('#mobileNavBackdrop').onclick = closeMobileNav;
+  wireThemeBtns();
   $('#logoutBtn').onclick = ()=>signOut(auth);
   $('#logoutBtnMobile').onclick = ()=>signOut(auth);
   $('#notifBtn').onclick = toggleNotifPanel;
