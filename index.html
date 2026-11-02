@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>مسار — إدارة طلبات الفحص الطبي</title>
-<meta name="theme-color" content="#faf7f2">
+<meta name="theme-color" content="#f4f8f6">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="مسار">
@@ -31,7 +31,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
-(function(){try{var t=localStorage.getItem('masar_theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-masar-theme',t);}catch(e){}})();
+(function(){var t='light';try{var v=localStorage.getItem('masar_theme');if(v==='light'||v==='dark')t=v;}catch(e){}document.documentElement.setAttribute('data-masar-theme',t);})();
 </script>
 <script>
 (function(){
@@ -480,7 +480,7 @@ const db = getFirestore(fbApp);
 setPersistence(auth, browserSessionPersistence).catch(()=>{});
 
 /* ---- Auto-update: if a newer deploy exists, reload so nobody runs a stale cached/suspended copy ---- */
-const APP_BUILD = '20261102120621';
+const APP_BUILD = '20261102120912';
 let _lastUpdateCheck = 0;
 async function checkForUpdate(){
   try{
@@ -732,7 +732,7 @@ function startApp(){
   startSessionWatch();
 }
 
-function curTheme(){ return document.documentElement.getAttribute('data-masar-theme')==='light' ? 'light' : 'dark'; }
+function curTheme(){ return document.documentElement.getAttribute('data-masar-theme')==='dark' ? 'dark' : 'light'; }
 function themeBtnHTML(compact){
   const light = curTheme()==='light';
   if(compact) return `<button class="btn-ghost btn px-3 py-2 text-xs" data-theme-toggle data-compact="1" title="تغيير المظهر" style="border-radius:11px;font-weight:800">${light ? '🌙 الوضع الغامق' : '☀️ الوضع الفاتح'}</button>`;
