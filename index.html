@@ -341,7 +341,7 @@ const db = getFirestore(fbApp);
 setPersistence(auth, browserSessionPersistence).catch(()=>{});
 
 /* ---- Auto-update: if a newer deploy exists, reload so nobody runs a stale cached/suspended copy ---- */
-const APP_BUILD = '20261101004107';
+const APP_BUILD = '20261102110758';
 let _lastUpdateCheck = 0;
 async function checkForUpdate(){
   try{
@@ -1677,9 +1677,11 @@ function requestsTable(items, opts={}){
         <td class="hide-sm rt-actions">
           <div class="flex items-center gap-1.5 justify-end">
             <button class="btn btn-ghost px-2.5 py-1 text-xs" data-openreq="${r.id}">تفاصيل</button>
-            ${S.role==='hr' ? `
+            ${(S.role==='hr'||S.role==='sales') ? `
             ${nextStageOf(r) ? `<button class="btn btn-ghost px-2.5 py-1 text-xs" data-next="${r.id}" title="نقل إلى: ${STATUS[nextStageOf(r).to].label}" style="color:var(--brand)">${iconNext}</button>` : ''}
             <button class="btn btn-ghost px-2.5 py-1 text-xs" data-wa="${r.id}" title="إرسال رسالة واتساب للموظف" style="color:#25D366">${iconWhatsApp}</button>
+            ` : ''}
+            ${S.role==='hr' ? `
             <button class="btn btn-ghost px-2.5 py-1 text-xs" data-edit="${r.id}" title="تعديل">${iconEdit}</button>
             <button class="btn btn-ghost px-2.5 py-1 text-xs" data-del="${r.id}" title="حذف" style="color:var(--red)">${iconTrash}</button>` : ''}
           </div>
@@ -1791,10 +1793,10 @@ function openDetailModal(id){
 
   let actionsHTML = '';
   if(S.role==='reception') actionsHTML = reqActionsHTML(r,'px-4 py-2 text-sm');
-  if(S.role==='hr' && nextStageOf(r)){
+  if((S.role==='hr'||S.role==='sales') && nextStageOf(r)){
     actionsHTML += `<button class="btn btn-brand px-4 py-2 text-sm" data-action="next" data-id="${r.id}">${iconNext}<span class="mr-1">نقل إلى: ${STATUS[nextStageOf(r).to].label}</span></button>`;
   }
-  if(S.role==='hr'){
+  if(S.role==='hr'||S.role==='sales'){
     actionsHTML += `<button class="btn btn-ghost px-4 py-2 text-sm" data-action="wa" data-id="${r.id}" style="color:#25D366">${iconWhatsApp}<span class="mr-1">إرسال واتساب</span></button>`;
   }
   if(S.role==='hr' || S.role==='sales'){
@@ -1853,7 +1855,11 @@ const NEXT_STAGE = {
   examined:  { to:'education', at:'educationAt', by:'educationBy', nm:'educationByName', msg:'بانتظار اجتياز التثقيف' },
   education: { to:'completed', at:'completedAt', by:'completedBy', nm:'completedByName', msg:'تم إكمال الطلب' },
 };
-function nextStageOf(r){ return NEXT_STAGE[normStatus(r.status)] || null; }
+function nextStageOf(r){
+  const n = NEXT_STAGE[normStatus(r.status)] || null;
+  if(S.role==='sales') return normStatus(r.status)==='sent' ? n : null; // المبيعات: من طلب جديد إلى تم الفحص فقط
+  return n;
+}
 function advanceRequest(id){
   const r = S.requests.find(x=>x.id===id); if(!r) return;
   const n = nextStageOf(r); if(!n) return;
