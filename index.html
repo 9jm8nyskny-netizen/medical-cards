@@ -33,6 +33,112 @@
 <script>
 (function(){try{var t=localStorage.getItem('masar_theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-masar-theme',t);}catch(e){}})();
 </script>
+<script>
+(function(){
+  var lang='ar'; try{ lang = localStorage.getItem('masar_lang')==='en' ? 'en' : 'ar'; }catch(e){}
+  window.MASAR_LANG = lang;
+  window.MASAR_LOCALE = lang==='en' ? 'en-GB' : 'ar';
+  window.MASAR_SETLANG = function(l){ try{ localStorage.setItem('masar_lang', l); }catch(e){} location.reload(); };
+  if(lang!=='en') return;
+  document.documentElement.lang='en'; document.documentElement.dir='ltr';
+  var EXACT = {
+'مسار':'Masar','الكل':'All','جديد':'New','تجديد':'Renewal','تم الفحص':'Examined','بانتظار زيارة المركز':'Awaiting center visit',
+'بانتظار اجتياز التثقيف':'Awaiting health education','تم اجتياز التثقيف':'Health education passed','اجتياز التثقيف':'Health education passed','تم':'Completed','مرفوضة':'Rejected','مرفوض':'Rejected',
+'اسم':'Name','بحث':'Search','حذف':'Delete','طلب':'Request','دخول':'Sign in','هوية':'ID','إغلاق':'Close','إلغاء':'Cancel','إيميل':'Email',
+'الاسم':'Name','الصفة':'Role','الفحص':'Examination','تحديد':'Select','البريد':'Email','الجوال':'Mobile','الحالة':'Status','الشركة':'Company','الموظف':'Employee','الهاتف':'Phone','الهوية':'ID',
+'بواسطة':'By','تفاصيل':'Details','مستخدم':'User','ملاحظات':'Notes','واتساب':'WhatsApp','الإيميل':'Email','الدردشة':'Chat','أنت':'You',
+'طلب جديد':'New request','طلب آخر':'Another request','رفع صورة':'Upload photo','تغيير الصورة':'Change photo','مسؤول HR':'HR Manager','غير معروف':'Unknown',
+'الإشعارات':'Notifications','حذف الطلب':'Delete request','رفض الطلب':'Reject request','رقم الطلب':'Request No.','سبب الرفض':'Rejection reason','نوع الطلب':'Request type','نوع الفحص':'Exam type',
+'اسم الشركة':'Company name','اسم الموظف':'Employee name','تحديد الكل':'Select all','حالة الطلب':'Request status','حذف المحدد':'Delete selected','حساب مؤسسي':'Corporate account','رقم الجوال':'Mobile number','رقم الهوية':'ID number',
+'تأكيد الحذف':'Confirm deletion','تأكيد الرفض':'Confirm rejection','تاريخ الرفض':'Rejection date','تاريخ الطلب':'Request date','تاريخ الفحص':'Exam date','تعديل الطلب':'Edit request',
+'سجل الطلبات':'Request log','صورة الموظف':'Employee photo','فاتورة باسم':'Invoice in name of','كلمة المرور':'Password','لوحة التحكم':'Dashboard','مركز العبير':'Al-Abeer Center','لحظة كيف':'Lahzat Keif',
+'أحدث الطلبات':'Latest requests','إرسال واتساب':'Send WhatsApp','إنشاء الحساب':'Create account','تاريخ القبول':'Acceptance date','تسجيل الخروج':'Sign out','الوضع الغامق':'Dark mode','الوضع الفاتح':'Light mode',
+'جميع الطلبات':'All requests','جهة الفاتورة':'Billing entity','حذف المستخدم':'Delete user','طلب فحص جديد':'New exam request','طلبات مكتملة':'Completed requests','إلغاء التحديد':'Clear selection','إنهاء التحديد':'Done selecting',
+'تاريخ الإكمال':'Completion date','تاريخ الإنشاء':'Created date','حفظ التعديلات':'Save changes','كل المستخدمين':'All users','موظف المبيعات':'Sales employee','إجمالي الطلبات':'Total requests','الدردشة العامة':'Public chat',
+'إنشاء حساب جديد':'Create new account','استيراد من إكسل':'Import from Excel','الطلبات الواردة':'Incoming requests','تأكيد الاستيراد':'Confirm import','إدارة المستخدمين':'User management','اتصال مشفّر وآمن':'Secure encrypted connection',
+'الاسم بالإنجليزي':'Name (English)','حفظ وإرسال الطلب':'Save & send request','إخفاء كلمة المرور':'Hide password','إظهار كلمة المرور':'Show password','البريد الإلكتروني':'Email address','تاريخ حضور الموظف':'Employee arrival date',
+'المستخدمون الحاليون':'Current users','استقبال المركز الطبي':'Medical center reception','الحسابات التي أضفتها':'Accounts you added','مسؤول الموارد البشرية':'HR manager','تعديل بيانات المستخدم':'Edit user data','موظف استقبال المركز الطبي':'Medical center reception staff',
+'إنشاء طلب فحص طبي جديد':'Create new medical exam request','رقم الهوية / الإقامة *':'ID / Iqama number *','تاريخ الانتقال لانتظار التثقيف':'Moved to awaiting education date',
+'اسم الموظف (عربي) *':'Employee name (Arabic) *','اسم الموظف (إنجليزي)':'Employee name (English)','الاسم *':'Name *','الصفة *':'Role *','اسم الشركة *':'Company name *','نوع الطلب *':'Request type *','سبب الرفض *':'Rejection reason *','كلمة مرور مؤقتة *':'Temporary password *','البريد الإلكتروني *':'Email address *',
+'رقم جوال الموظف (واتساب)':'Employee mobile (WhatsApp)','إيميل الموظف (اختياري — لإرسال التحديثات)':'Employee email (optional — for sending updates)','الشركة التي سيتم إصدار الفاتورة باسمها *':'Company the invoice will be issued to *',
+'سبب الرفض (إن وجد)':'Rejection reason (if any)','حفظ وفتح واتساب':'Save & open WhatsApp','رقم جوال الموظف':'Employee mobile number','نوع الفحص الطبي':'Medical exam type','سبق له الفحص ويحتاج تجديداً فقط':'Previously examined, renewal only',
+'اسم الموظف بالعربي':'Employee name (Arabic)','اسم الموظف بالانجليزي':'Employee name (English)','الاسم بالانجليزي':'Name (English)','الشركة الفاتوره':'Company / invoice','رقم الهويه الاقامه':'ID / Iqama number',
+'جارِ الدخول':'Signing in','جارِ الحفظ':'Saving','جارِ الحذف':'Deleting','جارِ الإنشاء':'Creating','جارِ التحميل':'Loading','جارِ الاستيراد':'Importing','جارِ قراءة الملف':'Reading file','جارِ تجهيز الصورة':'Preparing photo','جارِ معالجة الصورة':'Processing photo','تم تجهيز الصورة ✓':'Photo ready ✓',
+'الأعمدة المكتشفة تلقائياً':'Auto-detected columns','— لم يُكتشف —':'— Not detected —','الزميل/ة':'Colleague','رسالة جديدة':'New message','نقل إلى':'Move to',
+'لا توجد إشعارات بعد':'No notifications yet','لا توجد طلبات مطابقة':'No matching requests','لا يوجد مستخدمون بعد':'No users yet','لم تُضف أي حسابات بعد':'You haven\'t added any accounts yet','لا توجد طلبات مكتملة بعد':'No completed requests yet','لا توجد طلبات قيد المتابعة حالياً':'No requests in progress right now',
+'جرّب تعديل عوامل البحث أعلاه':'Try changing the search filters above','لا توجد رسائل بعد — ابدأ المحادثة 👋':'No messages yet — start the conversation 👋','اكتب رسالة...':'Type a message...','اكتب سبب الرفض هنا':'Write the rejection reason here',
+'ستظهر هنا الطلبات المكتملة مجمّعة حسب شهر تقديمها':'Completed requests will appear here grouped by month','ستظهر هنا الطلبات فور إنشائها من الموارد البشرية، وتبقى حتى تكتمل':'Requests appear here as soon as HR creates them and stay until completed',
+'اسم، هوية، رقم طلب':'Name, ID, request no.','الدخول':'Sign in','تغيير المظهر':'Change theme','إرسال':'Send','أو':'or','إلى':'To','من تاريخ':'From date','إلى تاريخ':'To date','البريد الالكتروني':'Email address','الإيميلات':'Emails',
+'عربي':'Arabic','مفتوح':'Open','الشركه':'Company','حفظ':'Save','تعديل':'Edit','إضافة':'Add','تم الإرسال':'Sent','إرسال رسالة واتساب للموظف':'Send WhatsApp message to employee','تعديل بيانات الطلب':'Edit request data',
+};
+var PARTIAL = {
+'تم تحديد':'Selected','بنجاح':'successfully','لم يسبق للموظف إجراء الفحص. تجديد':'Employee has not been examined before. Renewal','— تأكد من صلاحيات الحذف':'— check delete permissions','غير منتهية':'Not expired',
+'طلب فحص جديد رقم':'New exam request no.','تم إنشاء الطلب رقم':'Request created no.','تم إنشاء الطلب':'Request created','تم إكمال الطلب':'Request completed','تم رفض الطلب':'Request rejected','تم حذف الطلب':'Request deleted','تم حفظ التعديلات':'Changes saved',
+'اكتمل طلب الفحص رقم':'Exam request completed no.','تم رفض طلب الفحص رقم':'Exam request rejected no.','تحديث حالة طلب الفحص رقم':'Exam request status updated no.','هل أنت متأكد من حذف طلب رقم':'Are you sure you want to delete request no.','هل أنت متأكد من حذف حساب':'Are you sure you want to delete the account of',
+'تم تعديل بيانات الطلب بواسطة HR':'Request data edited by HR','تم فتح رسالة واتساب للموظف':'WhatsApp message opened for employee','تم استيراد الطلب من ملف إكسل':'Request imported from Excel file','طلب فحص جديد من ملف إكسل':'New exam request from Excel file',
+'تم تعديل بيانات مستخدم':'User data edited','تم حذف المستخدم':'User deleted','تم حذف مستخدم':'User deleted','تم إنشاء حساب مستخدم':'User account created','تم إنشاء حساب':'Account created','تم العثور على':'Found','تم استيراد':'Imported','تم حذف':'Deleted','طلب بنجاح':'request(s) successfully','وتعذّر حذف':'and failed to delete',
+'نقل طلب «':'Move request «','» من «':'» from «','» إلى «':'» to «','نقل إلى:':'Move to:','نقل إلى':'Move to','— السبب':'— Reason','— بواسطة':'— by','طلب رقم':'Request no.','تحت مسمى':'under the name','تأكيد حذف الكل':'Confirm delete all','طلب (حذف جماعي)':'request(s) (bulk delete)','صف آخر':'more rows','وتجاهل':'and ignore','صف — سيتم استيراد':'rows — will import',
+'صف لنقص اسم الموظف أو رقم الهوية':'rows missing employee name or ID number','سبب الرفض:':'Rejection reason:','رقم الطلب:':'Request No.:','الهوية:':'ID:','الجوال:':'Mobile:','الإيميل:':'Email:','الشركة:':'Company:','فاتورة باسم:':'Invoice in name of:','نوع الفحص:':'Exam type:','ملاحظات:':'Notes:','هوية:':'ID:','تاريخ الطلب:':'Request date:','تاريخ القبول:':'Acceptance date:','تاريخ حضور الموظف:':'Employee arrival date:','تاريخ الفحص:':'Exam date:','تاريخ الإكمال:':'Completion date:','تاريخ الرفض:':'Rejection date:','تاريخ الانتقال لانتظار التثقيف:':'Moved to awaiting education:','بواسطة':'by','أُضيف بواسطة':'Added by',
+'نقل إلى: ':'Move to: ','تعديل الطلب —':'Edit request —','إنشاء طلب فحص طبي جديد':'Create new medical exam request',
+'الرجاء تعبئة الحقول المطلوبة (*)':'Please fill in the required fields (*)','الرجاء تعبئة الحقول المطلوبة':'Please fill in the required fields','الرجاء كتابة الاسم':'Please enter the name','الرجاء كتابة سبب الرفض':'Please enter the rejection reason',
+'تعذّر إرسال الرسالة':'Failed to send message','تعذّر تنفيذ العملية':'Operation failed','تعذّر حفظ التعديلات':'Failed to save changes','تعذّر معالجة الصورة':'Failed to process photo','تعذّر حفظ رقم الجوال':'Failed to save mobile number','تعذّر قراءة الملف — تأكد أنه ملف إكسل أو CSV صالح':'Could not read the file — make sure it is a valid Excel or CSV file','تعذّر قراءة الملف':'Could not read the file',
+'تعذّر تحميل قائمة المستخدمين':'Failed to load users list','تعذّر حفظ الطلب — راجع قواعد Firestore':'Failed to save request — check Firestore rules','تعذّر تجهيز الصورة، أعد المحاولة قبل الحفظ':'Photo not ready, retry before saving','تعذّر تجهيز الصورة — احذفها أو أعد اختيارها قبل الحفظ':'Photo not ready — remove it or re-select before saving','تعذّرت معالجة الصورة — جرّب صورة أخرى':'Could not process the photo — try another one',
+'تعذّر حذف الطلب — تأكد من صلاحيات الحذف في Firestore':'Failed to delete request — check delete permissions in Firestore','تعذّر حذف المستخدم — تأكد من صلاحيات الحذف في Firestore':'Failed to delete user — check delete permissions in Firestore','تعذّر تحميل مكتبة قراءة الإكسل — تحقق من الاتصال بالإنترنت':'Could not load the Excel library — check your internet connection',
+'تعذّر الاتصال بقاعدة البيانات. تأكد من إعداد Firestore وقواعد الحماية. — رمز الخطأ':'Could not connect to the database. Check Firestore setup and rules. — Error code','غير معروف':'unknown',
+'الملف المختار ليس صورة':'The selected file is not an image','الصورة كبيرة جداً حتى بعد الضغط — جرّب صورة أخرى':'The image is too large even after compression — try another one','الملف فارغ أو بدون بيانات قابلة للقراءة':'The file is empty or has no readable data',
+'رقم الجوال غير صالح — تحقق منه':'Invalid mobile number — please check it','— لا يوجد رقم مسجّل. أدخل الرقم ليُحفظ ضمن بيانات الموظف وتُفتح المحادثة':'— No number on file. Enter it to save it with the employee data and open the chat',
+'صيغة البريد الإلكتروني غير صحيحة':'Invalid email format','كلمة المرور ضعيفة (6 أحرف على الأقل)':'Weak password (at least 6 characters)','هذا البريد مستخدم بالفعل':'This email is already in use','لا يوجد حساب بهذا البريد':'No account with this email','كلمة المرور غير صحيحة':'Incorrect password','بيانات الدخول غير صحيحة':'Incorrect login details','محاولات كثيرة، حاول لاحقاً':'Too many attempts, try again later','حدث خطأ، حاول مرة أخرى':'An error occurred, please try again',
+'تم تسجيل الخروج تلقائياً لعدم النشاط لمدة 20 دقيقة':'Signed out automatically after 20 minutes of inactivity','لم يتم العثور على حساب لك':'No account found for you','حسابك مُسجَّل للدخول لكن لا يوجد له ملف صفة داخل النظام. تواصل مع مسؤول الموارد البشرية لإنشاء حسابك بالصفة الصحيحة':'Your login exists but has no role profile in the system. Contact the HR manager to create your account with the correct role',
+'منصّة إدارة طلبات الفحص الطبي للموظفين — سجّل الدخول للمتابعة إلى لوحة التحكم الخاصة بك':'Employee medical exam request management platform — sign in to continue to your dashboard',
+'تعديل الحالة هنا يدوي وخارج سير العمل المعتاد بين HR والاستقبال — استخدمه فقط لتصحيح الأخطاء':'Changing the status here is manual and outside the normal HR/reception workflow — use it only to correct mistakes',
+'البريد الإلكتروني وكلمة المرور لا يمكن تعديلهما من هنا حالياً — من Firebase Console فقط':'Email and password cannot be edited from here — only from Firebase Console',
+'شارك البريد وكلمة المرور المؤقتة مع الموظف؛ لا توجد حالياً خاصية لتغيير كلمة المرور من داخل التطبيق — يمكن ذلك لاحقاً من Firebase Console':'Share the email and temporary password with the employee; there is currently no in-app password change — it can be done later from Firebase Console',
+'؟ لن يتمكن بعدها من الدخول إلى التطبيق. (يبقى حساب الدخول نفسه موجوداً في Firebase Auth ويحتاج حذف يدوي من Firebase Console إذا رغبت بإزالته نهائياً)':'? They will no longer be able to sign in. (The login account itself remains in Firebase Auth and needs manual deletion from Firebase Console if you want to remove it permanently)',
+'؟ هذا الإجراء لا يمكن التراجع عنه':'? This action cannot be undone','سيتم حذف الطلبات المحددة نهائياً، ولا يمكن التراجع عن هذا الإجراء':'The selected requests will be permanently deleted. This action cannot be undone',
+'اختر أي ملف إكسل (xlsx أو xls أو csv) بأي ترتيب أعمدة — سيتعرّف النظام تلقائياً على أعمدة اسم الموظف، رقم الهوية، الشركة، وجهة الفاتورة من عناوين الأعمدة، ويتجاهل أي أعمدة أخرى غير معروفة':'Choose any Excel file (xlsx, xls or csv) with any column order — the system will automatically detect the employee name, ID number, company and billing entity columns from the headers and ignore any other unknown columns',
+'استيراد طلبات من ملف إكسل':'Import requests from Excel file','تم تغيير':'Changed','لا يوجد سجل نشاط سابق':'No previous activity',
+'طلبات مكتملة':'Completed requests','تأكد من':'Make sure',
+};
+var KEYS=(function(){var o={},k;for(k in PARTIAL)o[k]=PARTIAL[k];for(k in EXACT){if(/\s/.test(k.trim())&&!(k in o))o[k]=EXACT[k];}return o;})();
+var KEYLIST=Object.keys(KEYS).sort(function(a,b){return b.length-a.length;});
+var AR=/[؀-ۿ]/;
+function tr(s){
+  if(typeof s!=='string'||!AR.test(s)) return s;
+  var t=s.trim();
+  if(EXACT.hasOwnProperty(t)) return s.replace(t,EXACT[t]);
+  var out=s,ch=false;
+  for(var i=0;i<KEYLIST.length;i++){var k=KEYLIST[i];if(out.indexOf(k)>-1){out=out.split(k).join(KEYS[k]);ch=true;}}
+  if(ch) out=out.replace(/؟/g,'?').replace(/،/g,',');
+  return out;
+}
+
+  window.MASAR_TR = tr;
+  var _c = window.confirm, _a = window.alert;
+  window.confirm = function(m){ return _c.call(window, tr(m)); };
+  window.alert = function(m){ return _a.call(window, tr(m)); };
+  var ATTRS=['placeholder','title','aria-label','alt'];
+  function doNode(n){
+    if(n.nodeType===3){ var v=tr(n.data); if(v!==n.data) n.data=v; return; }
+    if(n.nodeType!==1) return;
+    if(n.tagName==='SCRIPT'||n.tagName==='STYLE') return;
+    for(var i=0;i<ATTRS.length;i++){ var a=n.getAttribute(ATTRS[i]); if(a){ var nv=tr(a); if(nv!==a) n.setAttribute(ATTRS[i],nv); } }
+    if(n.tagName==='OPTION'&&n.label){ }
+    for(var c=n.firstChild;c;c=c.nextSibling) doNode(c);
+  }
+  function start(){
+    document.title = tr(document.title);
+    doNode(document.body);
+    new MutationObserver(function(ms){
+      ms.forEach(function(m){
+        if(m.type==='childList') m.addedNodes.forEach(doNode);
+        else if(m.type==='characterData') doNode(m.target);
+        else if(m.type==='attributes') doNode(m.target);
+      });
+    }).observe(document.body,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:ATTRS});
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start); else start();
+})();
+</script>
 <style>
   :root{
     --ink:#16231F; --ink-soft:#4C5E58; --line:#DEE7E2;
@@ -213,6 +319,9 @@
   html[data-masar-theme="light"] .app-sidebar{ box-shadow:0 18px 40px -22px rgba(10,30,25,.25); }
   html[data-masar-theme="light"] .app-logo-text{ background:linear-gradient(90deg,#0E6B5C,#B9852B); -webkit-background-clip:text; background-clip:text; }
   .theme-btn{ width:100%; margin-bottom:.5rem; }
+  html[dir="ltr"] th{ text-align:left; }
+  html[dir="ltr"] #notifPanel{ left:auto !important; right:0 !important; }
+  html[dir="ltr"] body{ font-family:'Tajawal','Segoe UI',sans-serif; }
 
   /* ===================== Auth screen ===================== */
   .auth-page{
@@ -371,7 +480,7 @@ const db = getFirestore(fbApp);
 setPersistence(auth, browserSessionPersistence).catch(()=>{});
 
 /* ---- Auto-update: if a newer deploy exists, reload so nobody runs a stale cached/suspended copy ---- */
-const APP_BUILD = '20261102111536';
+const APP_BUILD = '20261102112839';
 let _lastUpdateCheck = 0;
 async function checkForUpdate(){
   try{
@@ -431,8 +540,8 @@ const S = {
 const $ = sel => document.querySelector(sel);
 const el = (tag, cls, html) => { const e=document.createElement(tag); if(cls) e.className=cls; if(html!=null) e.innerHTML=html; return e; };
 const esc = s => (s==null?'':String(s)).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const fmtDT = iso => { if(!iso) return '—'; try{ return new Intl.DateTimeFormat('ar', {calendar:'gregory', day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'}).format(new Date(iso)); }catch(e){ return iso; } };
-const fmtD = iso => { if(!iso) return '—'; try{ return new Intl.DateTimeFormat('ar', {calendar:'gregory', day:'2-digit', month:'2-digit', year:'numeric'}).format(new Date(iso)); }catch(e){ return iso; } };
+const fmtDT = iso => { if(!iso) return '—'; try{ return new Intl.DateTimeFormat(window.MASAR_LOCALE, {calendar:'gregory', day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'}).format(new Date(iso)); }catch(e){ return iso; } };
+const fmtD = iso => { if(!iso) return '—'; try{ return new Intl.DateTimeFormat(window.MASAR_LOCALE, {calendar:'gregory', day:'2-digit', month:'2-digit', year:'numeric'}).format(new Date(iso)); }catch(e){ return iso; } };
 const nowISO = () => new Date().toISOString();
 const genReqNumber = () => {
   const d = new Date(); const p = n => String(n).padStart(2,'0');
@@ -527,7 +636,8 @@ onAuthStateChanged(auth, async (user)=>{
 
 function renderAuthScreen(errMsg){
   $('#app').innerHTML = `
-  <div class="auth-page fade-in">
+  <div class="auth-page fade-in" style="position:relative">
+    <div style="position:absolute;top:14px;inset-inline-end:14px;width:130px">${langBtnHTML()}</div>
     <div class="auth-card p-6 sm:p-8 max-w-md w-full">
 
       <div class="flex items-center gap-3 mb-1">
@@ -627,6 +737,12 @@ function themeBtnHTML(){
   const light = curTheme()==='light';
   return `<button class="pill-btn theme-btn" data-theme-toggle title="تغيير المظهر">${light ? '🌙' : '☀️'}<span>${light ? 'الوضع الغامق' : 'الوضع الفاتح'}</span></button>`;
 }
+function langBtnHTML(){
+  const en = window.MASAR_LANG==='en';
+  return `<button class="pill-btn theme-btn" data-lang-toggle title="Language">🌐<span>${en ? 'العربية' : 'English'}</span></button>`;
+}
+function wireLangBtns(){}
+document.addEventListener('click', e=>{ if(e.target.closest && e.target.closest('[data-lang-toggle]')) window.MASAR_SETLANG(window.MASAR_LANG==='en'?'ar':'en'); });
 function toggleTheme(){
   const t = curTheme()==='light' ? 'dark' : 'light';
   document.documentElement.setAttribute('data-masar-theme', t);
@@ -681,6 +797,7 @@ function buildShell(){
           </div>
         </div>
         ${themeBtnHTML()}
+        ${langBtnHTML()}
         <button id="logoutBtn" class="pill-btn">${iconXCirc}<span>تسجيل الخروج</span></button>
         <div style="text-align:center;font-size:.68rem;color:var(--ink-soft);opacity:.7;margin-top:.6rem;" dir="ltr">v${APP_BUILD}</div>
       </div>
@@ -713,7 +830,7 @@ function buildShell(){
       <nav class="flex flex-col gap-1" id="navlinksMobile">
         ${navItems.map(n=>`<div class="navlink" data-tab="${n.id}">${n.icon}<span>${n.label}</span></div>`).join('')}
       </nav>
-      <div class="mt-4">${themeBtnHTML()}</div>
+      <div class="mt-4">${themeBtnHTML()}${langBtnHTML()}</div>
       <button id="logoutBtnMobile" class="pill-btn">${iconXCirc}<span>تسجيل الخروج</span></button>
     </div>
   </div>
@@ -722,7 +839,7 @@ function buildShell(){
   document.querySelectorAll('[data-tab]').forEach(n=>n.onclick=()=>{ setTab(n.dataset.tab); closeMobileNav(); });
   $('#mobileMenuBtn').onclick = ()=> $('#mobileNav').classList.remove('hidden');
   $('#mobileNavBackdrop').onclick = closeMobileNav;
-  wireThemeBtns();
+  wireThemeBtns(); wireLangBtns();
   $('#logoutBtn').onclick = ()=>signOut(auth);
   $('#logoutBtnMobile').onclick = ()=>signOut(auth);
   $('#notifBtn').onclick = toggleNotifPanel;
@@ -797,8 +914,8 @@ function chatTitle(conv){
   const u = CHAT.users.find(x=>x.id===other);
   return u ? (u.name||u.email||'مستخدم') : 'مستخدم';
 }
-function chatTime(iso){ try{ return new Intl.DateTimeFormat('ar',{calendar:'gregory',hour:'2-digit',minute:'2-digit'}).format(new Date(iso)); }catch(e){ return ''; } }
-function chatDay(iso){ try{ return new Intl.DateTimeFormat('ar',{calendar:'gregory',day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(iso)); }catch(e){ return ''; } }
+function chatTime(iso){ try{ return new Intl.DateTimeFormat(window.MASAR_LOCALE,{calendar:'gregory',hour:'2-digit',minute:'2-digit'}).format(new Date(iso)); }catch(e){ return ''; } }
+function chatDay(iso){ try{ return new Intl.DateTimeFormat(window.MASAR_LOCALE,{calendar:'gregory',day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(iso)); }catch(e){ return ''; } }
 function renderChat(){
   const body = $('#pageBody'); if(!body) return;
   if($('#chatMsgs') && body.contains($('#chatMsgs'))){ renderChatList(); renderChatMessages(); return; }
@@ -1910,7 +2027,7 @@ function renderCompleted(){
 
   const monthLabel = key=>{
     const [y,m] = key.split('-').map(Number);
-    return new Intl.DateTimeFormat('ar', {calendar:'gregory', month:'long', year:'numeric'}).format(new Date(y, m-1, 1));
+    return new Intl.DateTimeFormat(window.MASAR_LOCALE, {calendar:'gregory', month:'long', year:'numeric'}).format(new Date(y, m-1, 1));
   };
 
   body.innerHTML = `
